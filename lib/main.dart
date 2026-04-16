@@ -1,24 +1,24 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:smart_sense/app.dart';
-import 'package:smart_sense/core/constants/api_routes.dart';
-import 'package:smart_sense/injection.dart';
-import 'package:smart_sense/core/utils/logger.dart';
-import 'package:smart_sense/shared/services/fcm_service.dart';
-import 'package:smart_sense/shared/services/location_config_service.dart';
-import 'package:smart_sense/shared/services/map_download_service.dart';
 
-import 'package:smart_sense/firebase_options.dart';
+import 'app.dart';
+import 'core/constants/api_routes.dart';
+import 'core/utils/logger.dart';
+import 'firebase_options.dart';
+import 'injection.dart';
+import 'shared/services/fcm_service.dart';
+import 'shared/services/location_config_service.dart';
+import 'shared/services/map_download_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Load environment variables
-  await dotenv.load(fileName: ".env");
+  await dotenv.load(fileName: '.env');
 
   // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);

@@ -1,5 +1,5 @@
-import 'package:smart_sense/features/auth/domain/entities/auth_token_entity.dart';
-import 'package:smart_sense/features/profile/data/models/user_model.dart';
+import '../../../profile/data/models/user_model.dart';
+import '../../domain/entities/auth_token_entity.dart';
 
 class AuthResponseModel extends AuthTokenEntity {
   const AuthResponseModel({

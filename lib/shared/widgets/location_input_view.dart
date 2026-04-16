@@ -1,21 +1,20 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
+
 import 'package:camera/camera.dart';
 import 'package:camera_macos/camera_macos.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:async';
 
 import '../../core/utils/logger.dart';
-
 import '../../features/destination/presentation/bloc/floor_map_bloc.dart';
 import '../../features/destination/presentation/bloc/floor_map_event.dart';
 import '../../features/destination/presentation/bloc/floor_map_state.dart';
-
 import '../../injection.dart';
 import '../services/location_config_service.dart';
 import 'custom_snackbar.dart' as snackbar;
@@ -72,11 +71,7 @@ class _LocationInputViewState extends State<LocationInputView> {
           setState(() {
             _currentHeading = event.heading;
           });
-          if (_currentHeading != null) {
-            _logger.verbose(
-              'Compass Orientation: ${_currentHeading?.toStringAsFixed(2)}°',
-            );
-          }
+          
         }
       });
     } catch (e) {

@@ -1,7 +1,8 @@
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+
 import '../../../../shared/widgets/map_view.dart';
 import '../../../../shared/widgets/offset_settings_modal.dart';
 import '../../../destination/domain/entities/destination_entity.dart';

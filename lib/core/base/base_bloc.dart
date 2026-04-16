@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:smart_sense/core/base/base_state.dart';
-import 'package:smart_sense/core/base/base_event.dart';
+
+import 'base_event.dart';
+import 'base_state.dart';
 
 /// Base BLoC class that extends Bloc from flutter_bloc
 /// All feature BLoCs should extend this class

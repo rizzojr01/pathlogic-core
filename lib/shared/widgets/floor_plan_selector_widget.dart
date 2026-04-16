@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:smart_sense/shared/widgets/map_markers.dart';
+import 'map_markers.dart';
 
 /// Reusable widget for selecting a location on a floor plan
 class FloorPlanSelectorWidget extends StatefulWidget {

@@ -1,21 +1,22 @@
 import 'dart:ui';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../../injection.dart';
+import '../../../../shared/services/location_config_service.dart';
+import '../../../../shared/widgets/custom_error_view.dart';
+import '../../../../shared/widgets/custom_loading_view.dart';
+import '../../../../shared/widgets/floor_plan_selector_widget.dart';
+import '../../../../shared/widgets/offset_settings_modal.dart';
 import '../../../../shared/widgets/step_indicator.dart';
+import '../../domain/entities/destination_entity.dart';
 import '../bloc/floor_map_bloc.dart';
 import '../bloc/floor_map_event.dart';
 import '../bloc/floor_map_state.dart';
-import '../../domain/entities/destination_entity.dart';
-import '../../../../shared/services/location_config_service.dart';
-import '../../../../shared/widgets/floor_plan_selector_widget.dart';
-import '../../../../shared/widgets/custom_loading_view.dart';
-import '../../../../shared/widgets/custom_error_view.dart';
-import '../../../../shared/widgets/offset_settings_modal.dart';
-
-import 'package:flutter/cupertino.dart';
 
 class FloorMapPage extends StatefulWidget {
   const FloorMapPage({super.key});

@@ -1,20 +1,28 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../shared/services/destinations_cache_service.dart';
-import '../../../../shared/services/floor_plan_cache_service.dart';
-import '../../../../shared/services/location_config_service.dart';
-import '../../../destination/domain/entities/destination_entity.dart';
-import '../../../locate_me/domain/usecases/get_destinations_usecase.dart';
-import '../../../localization_history/domain/entities/localization_history_entity.dart';
-import '../../../localization_history/domain/usecases/save_localization_history_usecase.dart';
 import '../../../../core/utils/image_utils.dart';
-import '../../../../shared/services/device_id_service.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../../injection.dart';
+import '../../../../shared/services/destinations_cache_service.dart';
+import '../../../../shared/services/device_id_service.dart';
+import '../../../../shared/services/floor_plan_cache_service.dart';
+import '../../../../shared/services/location_config_service.dart';
+import '../../../ar_navigation/domain/entities/ar_pose_entity.dart';
+import '../../../ar_navigation/domain/repositories/ar_tracking_repository.dart';
+import '../../../ar_navigation/domain/repositories/spatial_audio_repository.dart';
+import '../../../ar_navigation/domain/services/ar_transformation_service.dart';
+import '../../../destination/domain/entities/destination_entity.dart';
+import '../../../localization_history/domain/entities/localization_history_entity.dart';
+import '../../../localization_history/domain/usecases/save_localization_history_usecase.dart';
+import '../../../locate_me/domain/entities/user_position_entity.dart';
+import '../../../locate_me/domain/usecases/get_destinations_usecase.dart';
+import '../../domain/entities/location_entity.dart';
 import '../../domain/usecases/get_route_usecase.dart';
 import 'navigation_event.dart';
 import 'navigation_state.dart';
@@ -28,6 +36,16 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
   final SaveLocalizationHistoryUseCase saveLocalizationHistoryUseCase;
   final DeviceIdService deviceIdService;
 
+  // AR Dependencies
+  final ArTrackingRepository arTrackingRepository;
+  final SpatialAudioRepository spatialAudioRepository;
+  final ArTransformationService arTransformationService;
+
+  StreamSubscription<ArPoseEntity>? _arPoseSubscription;
+  ArPoseEntity? _originArPose;
+  UserPositionEntity? _referenceMapPose;
+  double _metersPerPixel = 1.0;
+
   NavigationBloc({
     required this.getRouteUseCase,
     required this.getDestinationsUseCase,
@@ -36,8 +54,21 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     required this.destinationsCacheService,
     required this.saveLocalizationHistoryUseCase,
     required this.deviceIdService,
+    required this.arTrackingRepository,
+    required this.spatialAudioRepository,
+    required this.arTransformationService,
   }) : super(const NavigationInitial()) {
     on<InitializeNavigationEvent>(_onInitializeNavigation);
+    on<ArPoseUpdatedEvent>(_onArPoseUpdated);
+    on<ToggleArViewEvent>(_onToggleArView);
+  }
+
+  @override
+  Future<void> close() {
+    _arPoseSubscription?.cancel();
+    arTrackingRepository.stopSession();
+    spatialAudioRepository.stopDirectionalGuidance();
+    return super.close();
   }
 
   Future<void> _onInitializeNavigation(
@@ -48,15 +79,11 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     final building = locationConfigService.building;
     final floor = event.pickedFloor ?? locationConfigService.floor;
     final destinationId = event.destination.destinationId;
-    // Use the stable device ID as session identifier so the backend always
-    // sees the same user/device across every request from this device.
     final sessionId = deviceIdService.getDeviceId();
     final useSampleImage = locationConfigService.useSampleImage;
 
     emit(const NavigationLoading(message: 'Preparing your route...'));
 
-    // ── Step 1: Read floor plan from cache (pre-loaded by MapDownloadService) ─
-    // Maps are downloaded when the building is selected; no per-request fetch.
     final floorPlanBase64 = await floorPlanCacheService.getCachedFloorPlanBase64(
       place: place,
       building: building,
@@ -73,7 +100,6 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
       return;
     }
 
-    // ── Step 2: Prepare the localization image ────────────────────────────────
     final useAlternate = locationConfigService.useAlternateSampleImage;
     bool effectiveUseSample = useSampleImage;
     String base64Image = '';
@@ -112,7 +138,6 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
       }
     }
 
-    // ── Step 3: Get route ─────────────────────────────────────────────────────
     emit(const NavigationLoading(message: 'Calculating route...'));
 
     final routeResult = await getRouteUseCase(
@@ -149,12 +174,9 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
         List<DestinationEntity> destinations = [];
         final Map<String, List<DestinationEntity>> destinationsByFloor = {};
 
-        // Normalise floor string for comparison: "17_floor" → "17"
         String normaliseFloor(String f) =>
             f.replaceAll('_floor', '').replaceAll('_', '').trim().toLowerCase();
 
-        // Fetch destinations for a floor — cache-first, API fallback.
-        // The multifloor API returns ALL floors; we group and cache per-floor.
         Future<List<DestinationEntity>> fetchDestsForFloor(
           String floorKey,
         ) async {
@@ -178,7 +200,6 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
           final allDests = result.getOrElse(() => []);
           if (allDests.isEmpty) return [];
 
-          // Group by each destination's own floor field
           final Map<String, List<DestinationEntity>> grouped = {};
           for (final d in allDests) {
             final normDest = d.floor != null
@@ -187,7 +208,6 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
             grouped.putIfAbsent(normDest, () => []).add(d);
           }
 
-          // Cache each floor's slice
           for (final entry in grouped.entries) {
             final rawKey = route.multiFloorSteps
                 .map((s) => s.floor)
@@ -220,8 +240,6 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
           }),
         );
 
-        // ── Step 5: Build floorPlansByFloor from cache ────────────────────────
-        // All floor plans were pre-downloaded by MapDownloadService; just read.
         final Map<String, String> floorPlansByFloor = {};
         for (final step in route.multiFloorSteps) {
           final cached = await floorPlanCacheService.getCachedFloorPlanBase64(
@@ -234,7 +252,6 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
           }
         }
 
-        // ── Step 6: Save navigation history ──────────────────────────────────
         await saveLocalizationHistoryUseCase(
           LocalizationHistoryEntity(
             historyId: DateTime.now().millisecondsSinceEpoch,
@@ -250,6 +267,37 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
           ),
         );
 
+        // ── AR Initialization ───────────────────────────────────────────────
+        // Calculate scale (meters per pixel) from the first route step
+        if (route.steps.isNotEmpty) {
+          final firstStep = route.steps.first;
+          final dx = firstStep.to.x - firstStep.from.x;
+          final dy = firstStep.to.y - firstStep.from.y;
+          final pixelDist = math.sqrt(dx * dx + dy * dy);
+          if (pixelDist > 0 && firstStep.distanceMeters > 0) {
+            _metersPerPixel = firstStep.distanceMeters / pixelDist;
+            getIt<AppLogger>().info(
+              'NavigationBloc: Calculated scale: ${_metersPerPixel.toStringAsFixed(4)} m/px',
+            );
+          }
+        }
+
+        _referenceMapPose = UserPositionEntity(
+          x: route.origin.x,
+          y: route.origin.y,
+          angle: event.heading ?? 0.0,
+          floor: actualStartingFloor,
+        );
+        _originArPose = null;
+
+        await arTrackingRepository.startSession();
+        await spatialAudioRepository.init();
+
+        _arPoseSubscription?.cancel();
+        _arPoseSubscription = arTrackingRepository.watchPose().listen((pose) {
+          add(ArPoseUpdatedEvent(pose));
+        });
+
         emit(
           NavigationReady(
             currentLocation: route.origin.copyWith(floor: actualStartingFloor),
@@ -263,6 +311,121 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
           ),
         );
       },
+    );
+  }
+
+  void _onArPoseUpdated(
+    ArPoseUpdatedEvent event,
+    Emitter<NavigationState> emit,
+  ) {
+    if (state is! NavigationReady) return;
+    final currentState = state as NavigationReady;
+
+    final arPose = event.pose;
+    
+    // ── Origin Alignment ───────────────────────────────────────────────────
+    // We wait for a high-confidence pose before locking in the origin.
+    // This ensures the AR coordinate system is stable.
+    if (_originArPose == null) {
+      if (arPose.confidence >= 0.8) {
+        _originArPose = arPose;
+        getIt<AppLogger>().info(
+          'NavigationBloc: AR Origin locked at confidence ${arPose.confidence}',
+        );
+      } else {
+        // Still waiting for stable tracking...
+        return;
+      }
+    }
+
+    if (_referenceMapPose != null && _originArPose != null) {
+      // 1. Transform AR pose to map position
+      final updatedUserPosition = arTransformationService.transformArToMap(
+        currentArPose: arPose,
+        originArPose: _originArPose!,
+        referenceMapPose: _referenceMapPose!,
+        metersPerPixel: _metersPerPixel,
+      );
+
+      // 2. Update 3D Overlay
+      _update3dOverlay(currentState, arPose);
+
+      // 3. Update Spatial Audio
+      _updateSpatialAudio(updatedUserPosition, currentState);
+
+      // 4. Emit updated state
+      emit(
+        currentState.copyWith(
+          currentLocation: currentState.currentLocation.copyWith(
+            x: updatedUserPosition.x,
+            y: updatedUserPosition.y,
+            ang: updatedUserPosition.angle,
+          ),
+          heading: updatedUserPosition.angle,
+          currentArPose: arPose,
+        ),
+      );
+    }
+  }
+
+  void _onToggleArView(
+    ToggleArViewEvent event,
+    Emitter<NavigationState> emit,
+  ) {
+    if (state is! NavigationReady) return;
+    final currentState = state as NavigationReady;
+    emit(currentState.copyWith(isArViewEnabled: event.showAr));
+  }
+
+  void _update3dOverlay(NavigationReady state, ArPoseEntity currentArPose) {
+    if (_originArPose == null || _referenceMapPose == null) return;
+
+    final routePoints = state.route.steps.map((s) => s.to).toList();
+
+    final arPathPoints = routePoints.map((p) {
+      final worldPoint = arTransformationService.transformMapToArWorld(
+        targetX: p.x,
+        targetY: p.y,
+        originArPose: _originArPose!,
+        referenceMapPose: _referenceMapPose!,
+        metersPerPixel: _metersPerPixel,
+      );
+      return ArPoseEntity(
+        x: worldPoint.x,
+        y: currentArPose.y, // Keep at same vertical level
+        z: -worldPoint.y, // Point.y is Z in AR
+        heading: 0,
+        confidence: 1.0,
+        timestamp: DateTime.now(),
+      );
+    }).toList();
+
+    arTrackingRepository.updateOverlay(
+      activePath: arPathPoints,
+      nextWaypoint: arPathPoints.isNotEmpty ? arPathPoints.first : null,
+      destination: arPathPoints.isNotEmpty ? arPathPoints.last : null,
+    );
+  }
+
+  void _updateSpatialAudio(
+    UserPositionEntity userPos,
+    NavigationReady state,
+  ) {
+    if (state.route.steps.isEmpty) return;
+
+    final nextStep = state.route.steps.first;
+    final dx = nextStep.to.x - userPos.x;
+    final dy = nextStep.to.y - userPos.y;
+    final distancePx = math.sqrt(dx * dx + dy * dy);
+    final distanceMeters = distancePx * _metersPerPixel;
+
+    final targetAngle = math.atan2(dy, dx) * 180 / math.pi;
+    final relativeAngle = (targetAngle - userPos.angle + 540) % 360 - 180;
+
+    spatialAudioRepository.updateDirectionalGuidance(
+      isActive: true,
+      relativeAngleDeg: relativeAngle,
+      distanceMeters: distanceMeters,
     );
   }
 }

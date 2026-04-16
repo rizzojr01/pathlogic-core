@@ -1,84 +1,82 @@
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:smart_sense/core/network/api_client.dart';
-import 'package:smart_sense/core/services/storage_service.dart';
-import 'package:smart_sense/core/utils/logger.dart';
-import 'package:smart_sense/core/constants/api_routes.dart';
-import 'package:smart_sense/theme/theme_bloc.dart';
 
-// Shared
-import 'package:smart_sense/shared/services/location_config_service.dart';
-import 'package:smart_sense/shared/services/device_id_service.dart';
-import 'package:smart_sense/shared/services/floor_plan_cache_service.dart';
-import 'package:smart_sense/shared/services/destinations_cache_service.dart';
-import 'package:smart_sense/shared/services/recent_destinations_service.dart';
-import 'package:smart_sense/shared/services/location_service.dart';
-import 'package:smart_sense/shared/services/gps_auto_select_service.dart';
-import 'package:smart_sense/shared/services/wifi_auto_select_service.dart';
-import 'package:smart_sense/shared/services/map_download_service.dart';
-import 'package:smart_sense/shared/services/fcm_service.dart';
-import 'package:smart_sense/shared/data/datasources/place_remote_datasource.dart';
-import 'package:smart_sense/shared/presentation/bloc/location_settings_bloc.dart';
-
-// Camera
-import 'package:smart_sense/features/camera/data/datasources/camera_local_datasource.dart';
-import 'package:smart_sense/features/camera/data/datasources/camera_remote_datasource.dart';
-import 'package:smart_sense/features/camera/data/repositories/camera_repository_impl.dart';
-import 'package:smart_sense/features/camera/domain/repositories/camera_repository.dart';
-import 'package:smart_sense/features/camera/domain/usecases/capture_photo_usecase.dart';
-import 'package:smart_sense/features/camera/domain/usecases/upload_photo_usecase.dart';
-import 'package:smart_sense/features/camera/presentation/bloc/camera_bloc.dart';
-
-// Destination
-import 'package:smart_sense/features/destination/data/datasources/destination_remote_datasource.dart';
-import 'package:smart_sense/features/destination/data/repositories/destination_repository_impl.dart';
-import 'package:smart_sense/features/destination/domain/repositories/destination_repository.dart';
-import 'package:smart_sense/features/destination/domain/usecases/search_destinations_usecase.dart';
-import 'package:smart_sense/features/destination/domain/usecases/select_destination_usecase.dart';
-import 'package:smart_sense/features/destination/presentation/bloc/destination_bloc.dart';
-import 'package:smart_sense/features/destination/presentation/bloc/floor_map_bloc.dart';
-
-// Navigation
-import 'package:smart_sense/features/navigation/data/datasources/navigation_local_datasource.dart';
-import 'package:smart_sense/features/navigation/data/datasources/navigation_remote_datasource.dart';
-import 'package:smart_sense/features/navigation/data/repositories/navigation_repository_impl.dart';
-import 'package:smart_sense/features/navigation/domain/repositories/navigation_repository.dart';
-import 'package:smart_sense/features/navigation/domain/usecases/get_route_usecase.dart';
-import 'package:smart_sense/features/navigation/presentation/bloc/navigation_bloc.dart';
-
-// Locate Me
-import 'package:smart_sense/features/locate_me/data/datasources/locate_me_remote_datasource.dart';
-import 'package:smart_sense/features/locate_me/data/repositories/locate_me_repository_impl.dart';
-import 'package:smart_sense/features/locate_me/domain/repositories/locate_me_repository.dart';
-import 'package:smart_sense/features/locate_me/domain/usecases/get_floor_plan_usecase.dart';
-import 'package:smart_sense/features/locate_me/domain/usecases/localize_user_usecase.dart';
-import 'package:smart_sense/features/locate_me/domain/usecases/get_destinations_usecase.dart';
-import 'package:smart_sense/features/locate_me/presentation/bloc/locate_me_bloc.dart';
-
-// Localization History
-import 'package:smart_sense/features/localization_history/data/datasources/localization_history_remote_datasource.dart';
-import 'package:smart_sense/features/localization_history/data/datasources/localization_history_local_datasource.dart';
-import 'package:smart_sense/features/localization_history/data/repositories/localization_history_repository_impl.dart';
-import 'package:smart_sense/features/localization_history/domain/repositories/localization_history_repository.dart';
-import 'package:smart_sense/features/localization_history/domain/usecases/get_user_localization_history_usecase.dart';
-import 'package:smart_sense/features/localization_history/domain/usecases/save_localization_history_usecase.dart';
-import 'package:smart_sense/features/localization_history/presentation/bloc/localization_history_bloc.dart';
-
+import 'core/constants/api_routes.dart';
+import 'core/network/api_client.dart';
+import 'core/services/storage_service.dart';
+import 'core/utils/logger.dart';
+import 'features/ar_navigation/data/repositories/native_ar_tracking_repository.dart';
+import 'features/ar_navigation/data/repositories/native_spatial_audio_repository.dart';
+import 'features/ar_navigation/domain/repositories/ar_tracking_repository.dart';
+import 'features/ar_navigation/domain/repositories/spatial_audio_repository.dart';
+import 'features/ar_navigation/domain/services/ar_transformation_service.dart';
 // Auth
-import 'package:smart_sense/features/auth/data/datasources/auth_local_datasource.dart';
-import 'package:smart_sense/features/auth/data/datasources/auth_remote_datasource.dart';
-import 'package:smart_sense/features/auth/data/repositories/auth_repository_impl.dart';
-import 'package:smart_sense/features/auth/domain/repositories/auth_repository.dart';
-import 'package:smart_sense/features/auth/domain/usecases/login_usecase.dart';
-import 'package:smart_sense/features/auth/domain/usecases/signup_usecase.dart';
-import 'package:smart_sense/features/auth/domain/usecases/logout_usecase.dart';
-import 'package:smart_sense/features/auth/presentation/bloc/auth_bloc.dart';
-
+import 'features/auth/data/datasources/auth_local_datasource.dart';
+import 'features/auth/data/datasources/auth_remote_datasource.dart';
+import 'features/auth/data/repositories/auth_repository_impl.dart';
+import 'features/auth/domain/repositories/auth_repository.dart';
+import 'features/auth/domain/usecases/login_usecase.dart';
+import 'features/auth/domain/usecases/logout_usecase.dart';
+import 'features/auth/domain/usecases/signup_usecase.dart';
+import 'features/auth/presentation/bloc/auth_bloc.dart';
+// Camera
+import 'features/camera/data/datasources/camera_local_datasource.dart';
+import 'features/camera/data/datasources/camera_remote_datasource.dart';
+import 'features/camera/data/repositories/camera_repository_impl.dart';
+import 'features/camera/domain/repositories/camera_repository.dart';
+import 'features/camera/domain/usecases/capture_photo_usecase.dart';
+import 'features/camera/domain/usecases/upload_photo_usecase.dart';
+import 'features/camera/presentation/bloc/camera_bloc.dart';
+// Destination
+import 'features/destination/data/datasources/destination_remote_datasource.dart';
+import 'features/destination/data/repositories/destination_repository_impl.dart';
+import 'features/destination/domain/repositories/destination_repository.dart';
+import 'features/destination/domain/usecases/search_destinations_usecase.dart';
+import 'features/destination/domain/usecases/select_destination_usecase.dart';
+import 'features/destination/presentation/bloc/destination_bloc.dart';
+import 'features/destination/presentation/bloc/floor_map_bloc.dart';
+import 'features/localization_history/data/datasources/localization_history_local_datasource.dart';
+// Localization History
+import 'features/localization_history/data/datasources/localization_history_remote_datasource.dart';
+import 'features/localization_history/data/repositories/localization_history_repository_impl.dart';
+import 'features/localization_history/domain/repositories/localization_history_repository.dart';
+import 'features/localization_history/domain/usecases/get_user_localization_history_usecase.dart';
+import 'features/localization_history/domain/usecases/save_localization_history_usecase.dart';
+import 'features/localization_history/presentation/bloc/localization_history_bloc.dart';
+// Locate Me
+import 'features/locate_me/data/datasources/locate_me_remote_datasource.dart';
+import 'features/locate_me/data/repositories/locate_me_repository_impl.dart';
+import 'features/locate_me/domain/repositories/locate_me_repository.dart';
+import 'features/locate_me/domain/usecases/get_destinations_usecase.dart';
+import 'features/locate_me/domain/usecases/get_floor_plan_usecase.dart';
+import 'features/locate_me/domain/usecases/localize_user_usecase.dart';
+import 'features/locate_me/presentation/bloc/locate_me_bloc.dart';
+// Navigation
+import 'features/navigation/data/datasources/navigation_local_datasource.dart';
+import 'features/navigation/data/datasources/navigation_remote_datasource.dart';
+import 'features/navigation/data/repositories/navigation_repository_impl.dart';
+import 'features/navigation/domain/repositories/navigation_repository.dart';
+import 'features/navigation/domain/usecases/get_route_usecase.dart';
+import 'features/navigation/presentation/bloc/navigation_bloc.dart';
 // Profile
-import 'package:smart_sense/features/profile/data/datasources/profile_remote_datasource.dart';
-import 'package:smart_sense/features/profile/data/repositories/profile_repository_impl.dart';
-import 'package:smart_sense/features/profile/domain/repositories/profile_repository.dart';
-import 'package:smart_sense/features/profile/domain/usecases/get_me_usecase.dart';
+import 'features/profile/data/datasources/profile_remote_datasource.dart';
+import 'features/profile/data/repositories/profile_repository_impl.dart';
+import 'features/profile/domain/repositories/profile_repository.dart';
+import 'features/profile/domain/usecases/get_me_usecase.dart';
+import 'shared/data/datasources/place_remote_datasource.dart';
+import 'shared/presentation/bloc/location_settings_bloc.dart';
+import 'shared/services/destinations_cache_service.dart';
+import 'shared/services/device_id_service.dart';
+import 'shared/services/fcm_service.dart';
+import 'shared/services/floor_plan_cache_service.dart';
+import 'shared/services/gps_auto_select_service.dart';
+// Shared
+import 'shared/services/location_config_service.dart';
+import 'shared/services/location_service.dart';
+import 'shared/services/map_download_service.dart';
+import 'shared/services/recent_destinations_service.dart';
+import 'shared/services/wifi_auto_select_service.dart';
+import 'theme/theme_bloc.dart';
 
 final getIt = GetIt.instance;
 
@@ -135,6 +133,17 @@ Future<void> initializeDependencies() async {
       locationService: getIt(),
       mapDownloadService: getIt(),
     ),
+  );
+
+  // AR Navigation Feature
+  getIt.registerLazySingleton<ArTrackingRepository>(
+    () => NativeArTrackingRepository(),
+  );
+  getIt.registerLazySingleton<SpatialAudioRepository>(
+    () => NativeSpatialAudioRepository(),
+  );
+  getIt.registerLazySingleton<ArTransformationService>(
+    () => ArTransformationService(),
   );
 
   // Auth Feature
@@ -241,6 +250,9 @@ Future<void> initializeDependencies() async {
       destinationsCacheService: getIt(),
       saveLocalizationHistoryUseCase: getIt(),
       deviceIdService: getIt(),
+      arTrackingRepository: getIt(),
+      spatialAudioRepository: getIt(),
+      arTransformationService: getIt(),
     ),
   );
 

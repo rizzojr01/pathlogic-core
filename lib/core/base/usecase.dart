@@ -1,5 +1,5 @@
 import 'package:dartz/dartz.dart';
-import 'package:smart_sense/core/error/failures.dart';
+import '../error/failures.dart';
 
 /// Base use case class with parameters
 abstract class UseCase<T, Params> {

@@ -1,6 +1,8 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
+
 import '../../core/utils/logger.dart';
 
 /// Represents an FCM data message event from the backend.

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:smart_sense/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:smart_sense/features/auth/presentation/bloc/auth_state.dart';
-import 'package:smart_sense/core/constants/app_text.dart';
-import 'package:smart_sense/core/services/storage_service.dart';
-import 'package:smart_sense/injection.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../core/constants/app_text.dart';
+import '../../../../core/services/storage_service.dart';
+import '../../../../injection.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});

@@ -9,8 +9,8 @@ import '../../services/floor_plan_cache_service.dart';
 import '../../services/gps_auto_select_service.dart';
 import '../../services/location_config_service.dart';
 import '../../services/location_service.dart';
-import '../../services/wifi_auto_select_service.dart';
 import '../../services/map_download_service.dart';
+import '../../services/wifi_auto_select_service.dart';
 import 'location_settings_event.dart';
 import 'location_settings_state.dart';
 

@@ -3,8 +3,8 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../../destination/domain/entities/destination_entity.dart';
 import '../entities/floor_plan_entity.dart';
-import '../entities/user_position_entity.dart';
 import '../entities/localization_request_entity.dart';
+import '../entities/user_position_entity.dart';
 
 abstract class LocateMeRepository {
   /// Get floor plan image

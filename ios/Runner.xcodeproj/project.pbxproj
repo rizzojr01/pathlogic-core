@@ -9,6 +9,11 @@
 /* Begin PBXBuildFile section */
 		0B9C4B2E58FDF147AA113572 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9B938377489DE1767C30B90B /* Pods_Runner.framework */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		17C31FDB2F90B9E8000A7911 /* ArChannelContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17C31FD42F90B9E8000A7911 /* ArChannelContract.swift */; };
+		17C31FDC2F90B9E8000A7911 /* ArPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17C31FD52F90B9E8000A7911 /* ArPreviewView.swift */; };
+		17C31FDD2F90B9E8000A7911 /* SpatialAudioChannelContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17C31FD92F90B9E8000A7911 /* SpatialAudioChannelContract.swift */; };
+		17C31FDE2F90B9E8000A7911 /* IOSSpatialAudioBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17C31FD82F90B9E8000A7911 /* IOSSpatialAudioBridge.swift */; };
+		17C31FDF2F90B9E8000A7911 /* IOSArTrackingBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17C31FD62F90B9E8000A7911 /* IOSArTrackingBridge.swift */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
@@ -45,6 +50,11 @@
 		12331B4A5325FE58E5CAF1FC /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
+		17C31FD42F90B9E8000A7911 /* ArChannelContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArChannelContract.swift; sourceTree = "<group>"; };
+		17C31FD52F90B9E8000A7911 /* ArPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArPreviewView.swift; sourceTree = "<group>"; };
+		17C31FD62F90B9E8000A7911 /* IOSArTrackingBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSArTrackingBridge.swift; sourceTree = "<group>"; };
+		17C31FD82F90B9E8000A7911 /* IOSSpatialAudioBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSSpatialAudioBridge.swift; sourceTree = "<group>"; };
+		17C31FD92F90B9E8000A7911 /* SpatialAudioChannelContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialAudioChannelContract.swift; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
@@ -87,6 +97,25 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		17C31FD72F90B9E8000A7911 /* AR */ = {
+			isa = PBXGroup;
+			children = (
+				17C31FD42F90B9E8000A7911 /* ArChannelContract.swift */,
+				17C31FD52F90B9E8000A7911 /* ArPreviewView.swift */,
+				17C31FD62F90B9E8000A7911 /* IOSArTrackingBridge.swift */,
+			);
+			path = AR;
+			sourceTree = "<group>";
+		};
+		17C31FDA2F90B9E8000A7911 /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				17C31FD82F90B9E8000A7911 /* IOSSpatialAudioBridge.swift */,
+				17C31FD92F90B9E8000A7911 /* SpatialAudioChannelContract.swift */,
+			);
+			path = Audio;
+			sourceTree = "<group>";
+		};
 		1C044A0D11EE1EF02F9B8B93 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -139,6 +168,8 @@
 		97C146F01CF9000F007C117D /* Runner */ = {
 			isa = PBXGroup;
 			children = (
+				17C31FD72F90B9E8000A7911 /* AR */,
+				17C31FDA2F90B9E8000A7911 /* Audio */,
 				97C146FA1CF9000F007C117D /* Main.storyboard */,
 				97C146FD1CF9000F007C117D /* Assets.xcassets */,
 				97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */,
@@ -396,6 +427,11 @@
 			files = (
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
+				17C31FDB2F90B9E8000A7911 /* ArChannelContract.swift in Sources */,
+				17C31FDC2F90B9E8000A7911 /* ArPreviewView.swift in Sources */,
+				17C31FDD2F90B9E8000A7911 /* SpatialAudioChannelContract.swift in Sources */,
+				17C31FDE2F90B9E8000A7911 /* IOSSpatialAudioBridge.swift in Sources */,
+				17C31FDF2F90B9E8000A7911 /* IOSArTrackingBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

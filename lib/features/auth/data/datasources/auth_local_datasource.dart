@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'package:smart_sense/core/constants/app_constants.dart';
-import 'package:smart_sense/core/services/storage_service.dart';
-import 'package:smart_sense/features/profile/data/models/user_model.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/services/storage_service.dart';
+import '../../../profile/data/models/user_model.dart';
 
 abstract class AuthLocalDataSource {
   Future<void> saveToken(String token);

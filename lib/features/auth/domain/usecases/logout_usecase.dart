@@ -1,7 +1,7 @@
 import 'package:dartz/dartz.dart';
-import 'package:smart_sense/core/base/usecase.dart';
-import 'package:smart_sense/core/error/failures.dart';
-import 'package:smart_sense/features/auth/domain/repositories/auth_repository.dart';
+import '../../../../core/base/usecase.dart';
+import '../../../../core/error/failures.dart';
+import '../repositories/auth_repository.dart';
 
 class LogoutUseCase extends UseCase<void, NoParams> {
   final AuthRepository repository;

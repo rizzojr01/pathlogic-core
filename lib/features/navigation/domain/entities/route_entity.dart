@@ -1,7 +1,7 @@
 import '../../../../core/base/base_entity.dart';
-import 'navigation_step_entity.dart';
-import 'multi_floor_navigation_step_entity.dart';
 import 'location_entity.dart';
+import 'multi_floor_navigation_step_entity.dart';
+import 'navigation_step_entity.dart';
 
 class RouteEntity extends BaseEntity {
   final String entityId;

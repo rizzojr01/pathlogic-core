@@ -1,4 +1,4 @@
-import 'package:smart_sense/core/base/base_entity.dart';
+import '../../../../core/base/base_entity.dart';
 
 class UserEntity extends BaseEntity {
   @override

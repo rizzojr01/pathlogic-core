@@ -1,10 +1,11 @@
 import 'package:dartz/dartz.dart';
-import 'package:smart_sense/core/error/failures.dart';
-import 'package:smart_sense/features/auth/data/datasources/auth_local_datasource.dart';
-import 'package:smart_sense/features/auth/data/datasources/auth_remote_datasource.dart';
-import 'package:smart_sense/features/profile/data/models/user_model.dart';
-import 'package:smart_sense/features/auth/domain/entities/auth_token_entity.dart';
-import 'package:smart_sense/features/auth/domain/repositories/auth_repository.dart';
+
+import '../../../../core/error/failures.dart';
+import '../../../profile/data/models/user_model.dart';
+import '../../domain/entities/auth_token_entity.dart';
+import '../../domain/repositories/auth_repository.dart';
+import '../datasources/auth_local_datasource.dart';
+import '../datasources/auth_remote_datasource.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;

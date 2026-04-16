@@ -1,5 +1,5 @@
-import 'package:smart_sense/core/base/base_state.dart';
-import 'package:smart_sense/features/profile/domain/entities/user_entity.dart';
+import '../../../../core/base/base_state.dart';
+import '../../../profile/domain/entities/user_entity.dart';
 
 abstract class AuthState extends BaseState {}
 

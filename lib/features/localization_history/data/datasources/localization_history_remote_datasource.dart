@@ -1,8 +1,9 @@
+import 'package:get_it/get_it.dart';
+
 import '../../../../core/base/base_datasource.dart';
 import '../../../../core/constants/api_routes.dart';
 import '../../../../core/utils/logger.dart';
 import '../models/localization_history_model.dart';
-import 'package:get_it/get_it.dart';
 
 abstract class LocalizationHistoryRemoteDataSource {
   Future<List<LocalizationHistoryModel>> getUserLocalizationHistory({

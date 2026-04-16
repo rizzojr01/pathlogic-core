@@ -1,6 +1,6 @@
 import 'package:dartz/dartz.dart';
-import 'package:smart_sense/core/error/exceptions.dart';
-import 'package:smart_sense/core/error/failures.dart';
+import '../error/exceptions.dart';
+import '../error/failures.dart';
 
 /// Base repository class
 /// Provides common error handling for all repositories

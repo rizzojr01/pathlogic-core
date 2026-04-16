@@ -1,5 +1,5 @@
-import 'package:smart_sense/core/network/api_client.dart';
-import 'package:smart_sense/core/constants/api_routes.dart';
+import '../../../../core/constants/api_routes.dart';
+import '../../../../core/network/api_client.dart';
 import '../models/auth_response_model.dart';
 
 abstract class AuthRemoteDataSource {

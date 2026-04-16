@@ -1,5 +1,5 @@
-import 'package:smart_sense/core/base/base_entity.dart';
-import 'package:smart_sense/features/profile/domain/entities/user_entity.dart';
+import '../../../../core/base/base_entity.dart';
+import '../../../profile/domain/entities/user_entity.dart';
 
 class AuthTokenEntity extends BaseEntity {
   final String accessToken;

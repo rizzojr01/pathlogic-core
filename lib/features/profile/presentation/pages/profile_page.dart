@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:smart_sense/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:smart_sense/features/auth/presentation/bloc/auth_event.dart';
-import 'package:smart_sense/features/auth/presentation/bloc/auth_state.dart';
 
 import '../../../../injection.dart';
 import '../../../../shared/presentation/bloc/location_settings_bloc.dart';
@@ -14,6 +11,9 @@ import '../../../../shared/services/location_config_service.dart';
 import '../../../../shared/widgets/auto_detect_location_widget.dart';
 import '../../../../theme/theme_bloc.dart';
 import '../../../../theme/widgets/color_customizer.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_event.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});

@@ -1,6 +1,6 @@
 import 'package:dartz/dartz.dart';
-import 'package:smart_sense/core/error/failures.dart';
-import 'package:smart_sense/features/auth/domain/entities/auth_token_entity.dart';
+import '../../../../core/error/failures.dart';
+import '../entities/auth_token_entity.dart';
 
 abstract class AuthRepository {
   Future<Either<Failure, AuthTokenEntity>> login({

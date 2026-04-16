@@ -1,6 +1,6 @@
 import 'package:dartz/dartz.dart';
-import 'package:smart_sense/core/base/usecase.dart';
-import 'package:smart_sense/core/error/failures.dart';
+import '../../../../core/base/usecase.dart';
+import '../../../../core/error/failures.dart';
 import '../entities/user_entity.dart';
 import '../repositories/profile_repository.dart';
 

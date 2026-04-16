@@ -1,4 +1,4 @@
-import 'package:smart_sense/core/base/base_event.dart';
+import '../../../../core/base/base_event.dart';
 
 abstract class AuthEvent extends BaseEvent {}
 

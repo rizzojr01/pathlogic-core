@@ -1,9 +1,9 @@
 import '../../../../core/base/base_datasource.dart';
+import '../../../../core/constants/api_routes.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../../injection.dart';
 import '../../../../shared/services/fcm_service.dart';
-import 'package:smart_sense/core/constants/api_routes.dart';
 import '../models/route_model.dart';
 
 abstract class NavigationRemoteDataSource {
@@ -69,7 +69,7 @@ class NavigationRemoteDataSourceImpl extends BaseRemoteDataSource
             ? {...userPickedCoordinates, 'enabled': true}
             : null,
         'heading': heading,
-        if (fcmToken != null) 'fcm_token': fcmToken,
+        'fcm_token': ?fcmToken,
       };
 
       final payloadSizeKb =

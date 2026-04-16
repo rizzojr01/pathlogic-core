@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:smart_sense/core/error/exceptions.dart';
-import 'package:smart_sense/core/network/api_client.dart';
+import '../error/exceptions.dart';
+import '../network/api_client.dart';
 
 /// Base class for all remote data sources
 /// Handles common API operations and exception management

@@ -20,7 +20,7 @@ class PlaceRemoteDataSourceImpl extends BaseRemoteDataSource
       final response = await apiClient.get<List<dynamic>>(
         ApiRoutes.getPlaceDetails,
         queryParameters: {
-          if (fcmToken != null) 'fcm_token': fcmToken,
+          'fcm_token': ?fcmToken,
         },
       );
       return PlaceModel.fromJsonList(response);

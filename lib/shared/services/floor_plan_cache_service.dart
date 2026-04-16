@@ -164,8 +164,8 @@ class FloorPlanCacheService {
     required String place,
     required String building,
   }) async {
-    final statusPrefix = '${_cacheStatusKeyPrefix}${place}_${building}_';
-    final metaPrefix = '${_cacheMetaKeyPrefix}${place}_${building}_';
+    final statusPrefix = '$_cacheStatusKeyPrefix${place}_${building}_';
+    final metaPrefix = '$_cacheMetaKeyPrefix${place}_${building}_';
     final filePrefix = 'fp_${place}_${building}_';
 
     final keys = _prefs.getKeys().toList();

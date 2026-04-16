@@ -4,18 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../injection.dart';
 import '../../../../core/constants/app_text.dart';
+import '../../../../injection.dart';
 import '../../../../shared/services/destinations_cache_service.dart';
 import '../../../../shared/services/device_id_service.dart';
 import '../../../../shared/services/location_config_service.dart';
-import '../../../destination/domain/entities/destination_entity.dart';
+import '../../../../shared/widgets/recent_place_tile.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
+import '../../../destination/domain/entities/destination_entity.dart';
 import '../../../localization_history/presentation/bloc/localization_history_bloc.dart';
 import '../../../localization_history/presentation/bloc/localization_history_event.dart';
 import '../../../localization_history/presentation/bloc/localization_history_state.dart';
-import '../../../../shared/widgets/recent_place_tile.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});

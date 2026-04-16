@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:smart_sense/core/constants/app_text.dart';
-import 'package:smart_sense/shared/widgets/premium_icon_container.dart';
-import 'package:smart_sense/shared/widgets/custom_button.dart';
-import 'package:smart_sense/core/services/storage_service.dart';
-import 'package:smart_sense/injection.dart';
+
+import '../../../../core/constants/app_text.dart';
+import '../../../../core/services/storage_service.dart';
+import '../../../../injection.dart';
+import '../../../../shared/widgets/custom_button.dart';
+import '../../../../shared/widgets/premium_icon_container.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key});

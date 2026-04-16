@@ -1,10 +1,11 @@
 import 'package:fuzzy/fuzzy.dart';
+
 import '../../../../core/base/base_datasource.dart';
 import '../../../../core/constants/api_routes.dart';
-import '../../../../shared/services/location_config_service.dart';
+import '../../../../injection.dart';
 import '../../../../shared/services/device_id_service.dart';
 import '../../../../shared/services/fcm_service.dart';
-import '../../../../injection.dart';
+import '../../../../shared/services/location_config_service.dart';
 import '../models/destination_model.dart';
 
 abstract class DestinationRemoteDataSource {
@@ -30,7 +31,7 @@ class DestinationRemoteDataSourceImpl extends BaseRemoteDataSource
           'device_id': getIt<DeviceIdService>().getDeviceId(),
           'include_coordinates': true,
           'unav_multifloor': _locationConfigService.multiFloorNavigation,
-          if (fcmToken != null) 'fcm_token': fcmToken,
+          'fcm_token': ?fcmToken,
         },
       );
 

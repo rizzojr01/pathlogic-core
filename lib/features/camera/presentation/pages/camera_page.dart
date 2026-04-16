@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:smart_sense/features/destination/domain/entities/destination_entity.dart';
-import 'package:smart_sense/shared/widgets/custom_error_view.dart';
-import 'package:smart_sense/shared/widgets/custom_loading_view.dart';
-import 'package:smart_sense/shared/widgets/loading_overlay.dart';
-import 'package:smart_sense/shared/widgets/step_indicator.dart';
 
+import '../../../../shared/widgets/custom_error_view.dart';
+import '../../../../shared/widgets/custom_loading_view.dart';
 import '../../../../shared/widgets/custom_snackbar.dart';
+import '../../../../shared/widgets/loading_overlay.dart';
 import '../../../../shared/widgets/location_input_view.dart';
+import '../../../../shared/widgets/step_indicator.dart';
+import '../../../destination/domain/entities/destination_entity.dart';
 import '../bloc/camera_bloc.dart';
 import '../bloc/camera_event.dart';
 import '../bloc/camera_state.dart';

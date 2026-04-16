@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:smart_sense/injection.dart';
-import 'package:smart_sense/shared/services/location_config_service.dart';
-import 'package:smart_sense/shared/widgets/step_indicator.dart';
-import 'package:smart_sense/shared/widgets/search_bar.dart';
-import 'package:smart_sense/shared/widgets/custom_loading_view.dart';
-import 'package:smart_sense/shared/widgets/custom_error_view.dart';
 
+import '../../../../injection.dart';
+import '../../../../shared/services/location_config_service.dart';
+import '../../../../shared/widgets/custom_error_view.dart';
+import '../../../../shared/widgets/custom_loading_view.dart';
+import '../../../../shared/widgets/search_bar.dart';
+import '../../../../shared/widgets/step_indicator.dart';
+import '../../domain/entities/destination_entity.dart';
 import '../bloc/destination_bloc.dart';
 import '../bloc/destination_event.dart';
 import '../bloc/destination_state.dart';
-import '../../domain/entities/destination_entity.dart';
 
 class DestinationPage extends StatefulWidget {
   const DestinationPage({super.key});

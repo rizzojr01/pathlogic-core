@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../core/constants/api_routes.dart';
 import '../../core/utils/logger.dart';

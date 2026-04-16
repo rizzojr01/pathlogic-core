@@ -1,9 +1,9 @@
 import 'package:dartz/dartz.dart';
-import 'package:smart_sense/core/error/failures.dart';
-import 'package:smart_sense/features/auth/data/datasources/auth_local_datasource.dart';
-import 'package:smart_sense/features/profile/domain/entities/user_entity.dart';
-import 'package:smart_sense/features/profile/domain/repositories/profile_repository.dart';
-import 'package:smart_sense/features/profile/data/datasources/profile_remote_datasource.dart';
+import '../../../../core/error/failures.dart';
+import '../../../auth/data/datasources/auth_local_datasource.dart';
+import '../../domain/entities/user_entity.dart';
+import '../../domain/repositories/profile_repository.dart';
+import '../datasources/profile_remote_datasource.dart';
 
 class ProfileRepositoryImpl implements ProfileRepository {
   final ProfileRemoteDataSource remoteDataSource;

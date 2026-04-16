@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:smart_sense/core/constants/app_text.dart';
-import 'package:smart_sense/injection.dart';
-import 'package:smart_sense/routes/app_router.dart';
-import 'package:smart_sense/theme/app_theme.dart';
-import 'package:smart_sense/theme/theme_bloc.dart';
-import 'package:smart_sense/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:smart_sense/features/auth/presentation/bloc/auth_event.dart';
-import 'package:smart_sense/shared/widgets/fcm_banner_overlay.dart';
+
+import 'core/constants/app_text.dart';
+import 'features/auth/presentation/bloc/auth_bloc.dart';
+import 'features/auth/presentation/bloc/auth_event.dart';
+import 'injection.dart';
+import 'routes/app_router.dart';
+import 'shared/widgets/fcm_banner_overlay.dart';
+import 'theme/app_theme.dart';
+import 'theme/theme_bloc.dart';
 
 class App extends StatelessWidget {
   const App({super.key});

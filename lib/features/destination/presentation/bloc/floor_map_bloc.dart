@@ -1,13 +1,13 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:stream_transform/stream_transform.dart';
+
 import '../../../../injection.dart';
+import '../../../../shared/data/datasources/place_remote_datasource.dart';
 import '../../../../shared/services/floor_plan_cache_service.dart';
 import '../../../../shared/services/location_config_service.dart';
 import '../../../locate_me/data/datasources/locate_me_remote_datasource.dart';
-import '../../../../shared/data/datasources/place_remote_datasource.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'floor_map_event.dart';
 import 'floor_map_state.dart';
-
-import 'package:stream_transform/stream_transform.dart';
 
 EventTransformer<E> debounce<E>(Duration duration) {
   return (events, mapper) => events.debounce(duration).switchMap(mapper);

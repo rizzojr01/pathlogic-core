@@ -462,7 +462,7 @@ class _LocationDetectionPageState extends State<LocationDetectionPage>
                     context.go('/dashboard');
                   },
                   child: Text(
-                    "Go to Dashboard",
+                    'Go to Dashboard',
                     style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                   ),
                 ),

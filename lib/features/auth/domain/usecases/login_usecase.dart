@@ -1,8 +1,8 @@
 import 'package:dartz/dartz.dart';
-import 'package:smart_sense/core/base/usecase.dart';
-import 'package:smart_sense/core/error/failures.dart';
-import 'package:smart_sense/features/auth/domain/entities/auth_token_entity.dart';
-import 'package:smart_sense/features/auth/domain/repositories/auth_repository.dart';
+import '../../../../core/base/usecase.dart';
+import '../../../../core/error/failures.dart';
+import '../entities/auth_token_entity.dart';
+import '../repositories/auth_repository.dart';
 
 class LoginParams {
   final String email;

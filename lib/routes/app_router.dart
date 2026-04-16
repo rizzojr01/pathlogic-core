@@ -1,27 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../features/splash/presentation/pages/splash_page.dart';
-import '../features/onboarding/presentation/pages/onboarding_page.dart';
+
 import '../features/auth/presentation/pages/login_page.dart';
 import '../features/auth/presentation/pages/signup_page.dart';
-import '../features/dashboard/presentation/pages/dashboard_page.dart';
-import '../features/camera/presentation/pages/camera_page.dart';
-import '../features/location/presentation/pages/location_detection_page.dart';
-import '../features/destination/presentation/pages/destination_page.dart';
-import '../features/navigation/presentation/pages/navigation_page.dart';
-import '../features/profile/presentation/pages/profile_page.dart';
-import '../features/destination/domain/entities/destination_entity.dart';
 import '../features/camera/presentation/bloc/camera_bloc.dart';
+import '../features/camera/presentation/pages/camera_page.dart';
+import '../features/dashboard/presentation/pages/dashboard_page.dart';
+import '../features/destination/domain/entities/destination_entity.dart';
 import '../features/destination/presentation/bloc/destination_bloc.dart';
-import '../features/navigation/presentation/bloc/navigation_bloc.dart';
+import '../features/destination/presentation/pages/destination_page.dart';
+import '../features/destination/presentation/pages/floor_map_page.dart';
+import '../features/localization_history/presentation/bloc/localization_history_bloc.dart';
+import '../features/localization_history/presentation/pages/localization_history_page.dart';
+import '../features/locate_me/presentation/bloc/locate_me_bloc.dart';
 import '../features/locate_me/presentation/pages/locate_me_camera_page.dart';
 import '../features/locate_me/presentation/pages/locate_me_floor_plan_page.dart';
-import '../features/locate_me/presentation/bloc/locate_me_bloc.dart';
-import '../features/localization_history/presentation/pages/localization_history_page.dart';
-import '../features/localization_history/presentation/bloc/localization_history_bloc.dart';
+import '../features/location/presentation/pages/location_detection_page.dart';
+import '../features/navigation/presentation/bloc/navigation_bloc.dart';
+import '../features/navigation/presentation/pages/navigation_page.dart';
+import '../features/onboarding/presentation/pages/onboarding_page.dart';
+import '../features/profile/presentation/pages/profile_page.dart';
+import '../features/splash/presentation/pages/splash_page.dart';
 import '../injection.dart';
-import '../features/destination/presentation/pages/floor_map_page.dart';
 
 class AppRouter {
   static const String splash = '/';

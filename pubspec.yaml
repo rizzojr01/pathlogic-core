@@ -65,6 +65,13 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.3
 
+  audioplayers: any
+  provider: any
+  flutter_image_compress: any
+  image_cropper: any
+  image_picker: any
+  http: any
+  flutter_tts: any
 flutter_launcher_icons:
   android: true
   ios: true

@@ -1,9 +1,10 @@
+import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flex_color_scheme/flex_color_scheme.dart';
+
+import '../app_theme.dart';
 import '../theme_bloc.dart';
 import '../theme_palette.dart';
-import '../app_theme.dart';
 
 class ColorCustomizer extends StatelessWidget {
   const ColorCustomizer({super.key});

@@ -1,19 +1,21 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../../../core/utils/image_utils.dart';
 import '../../../../shared/services/destinations_cache_service.dart';
+import '../../../../shared/services/device_id_service.dart';
 import '../../../../shared/services/floor_plan_cache_service.dart';
 import '../../../../shared/services/location_config_service.dart';
-import '../../../../shared/services/device_id_service.dart';
 import '../../../destination/domain/entities/destination_entity.dart';
 import '../../domain/entities/floor_plan_entity.dart';
 import '../../domain/entities/localization_request_entity.dart';
 import '../../domain/entities/user_position_entity.dart';
+import '../../domain/usecases/get_destinations_usecase.dart';
 import '../../domain/usecases/get_floor_plan_usecase.dart';
 import '../../domain/usecases/localize_user_usecase.dart';
-import '../../domain/usecases/get_destinations_usecase.dart';
 import 'locate_me_event.dart';
 import 'locate_me_state.dart';
 

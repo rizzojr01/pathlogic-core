@@ -1,10 +1,18 @@
 {
+  "format_on_save": "on",
+  "code_actions_on_save": {
+    "source.organizeImports": true,
+    "source.fixAll": true
+  },
   "lsp": {
     "dart": {
       "binary": {
         "path": ".fvm/flutter_sdk/bin/dart",
-        "arguments": ["language-server", "--protocol=lsp"],
-      },
-    },
-  },
+        "arguments": [
+          "language-server",
+          "--protocol=lsp"
+        ]
+      }
+    }
+  }
 }

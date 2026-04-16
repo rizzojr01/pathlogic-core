@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../../../core/base/base_datasource.dart';
-import 'package:smart_sense/core/constants/api_routes.dart';
+import '../../../../core/constants/api_routes.dart';
 import '../models/photo_model.dart';
 
 abstract class CameraRemoteDataSource {
