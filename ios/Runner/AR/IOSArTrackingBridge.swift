@@ -10,7 +10,15 @@ class IOSArTrackingBridge: NSObject, FlutterPlugin, FlutterStreamHandler {
         registrar.register(IOSArPreviewFactory(bridge: bridge), withId: ArChannelContract.previewViewType)
     }
 
-    let session = ARSession()
+    private var _session: ARSession?
+    var session: ARSession {
+        if _session == nil {
+            _session = ARSession()
+            _session?.delegate = self
+        }
+        return _session!
+    }
+
     private lazy var ciContext = CIContext()
     private var eventSink: FlutterEventSink?
     private var isSessionRunning = false
@@ -20,7 +28,6 @@ class IOSArTrackingBridge: NSObject, FlutterPlugin, FlutterStreamHandler {
 
     override init() {
         super.init()
-        session.delegate = self
         overlayRootNode.name = "unav_overlay_root"
     }
 
@@ -70,7 +77,7 @@ class IOSArTrackingBridge: NSObject, FlutterPlugin, FlutterStreamHandler {
     }
 
     private func stopSession() {
-        if isSessionRunning { session.pause(); isSessionRunning = false }
+        if isSessionRunning { _session?.pause(); isSessionRunning = false }
     }
 
     private func captureCurrentFrame(result: FlutterResult) {

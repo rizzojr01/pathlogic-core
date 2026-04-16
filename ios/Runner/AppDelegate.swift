@@ -9,11 +9,20 @@ import UIKit
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
     
-    // Register custom bridges using standard Plugin registration
-    // This is safer and avoids rootViewController timing issues
-    IOSArTrackingBridge.register(with: self.registrar(forPlugin: "com.unav.pathlogic.ArBridge")!)
-    IOSSpatialAudioBridge.register(with: self.registrar(forPlugin: "com.unav.pathlogic.AudioBridge")!)
+    // Register custom bridges
+    setupCustomPlugins()
     
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+  
+  private func setupCustomPlugins() {
+    // Safety check: ensure registrar is available
+    if let arRegistrar = self.registrar(forPlugin: "ArTrackingPlugin") {
+        IOSArTrackingBridge.register(with: arRegistrar)
+    }
+    
+    if let audioRegistrar = self.registrar(forPlugin: "SpatialAudioPlugin") {
+        IOSSpatialAudioBridge.register(with: audioRegistrar)
+    }
   }
 }
