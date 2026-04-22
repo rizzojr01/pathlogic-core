@@ -30,12 +30,8 @@ class MapView extends StatefulWidget {
   final String? currentFloor;
   final bool isCheckpoint;
   final double mapControlsRightOffset;
-
-  /// Compass heading (degrees, North-based) captured at the moment the user
-  /// took the localization photo. Pre-seeds the compass baseline so the
-  /// heading-up rotation stays correct even if the user moves the phone
-  /// while the backend is processing and the map is loading.
-  final double? captureHeading;
+  final double? headingAtStart;
+  final double? capturedReferenceHeading;
 
   const MapView({
     super.key,
@@ -49,7 +45,8 @@ class MapView extends StatefulWidget {
     this.autoCenterOnUser = true,
     this.currentFloor,
     this.isCheckpoint = false,
-    this.captureHeading,
+    this.headingAtStart,
+    this.capturedReferenceHeading,
     this.mapControlsRightOffset = 0,
   });
 
@@ -328,12 +325,27 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
     _hasSetInitialRotation = true;
 
     final userAngleDeg = route.steps.first.from.ang ?? 0.0;
-    _manualRotation = -(userAngleDeg * math.pi / 180.0 + math.pi / 2);
-    _initialRouteRotation = _manualRotation;
+
+    // --- Synchronize initial rotation using headings from NavigationBloc ---
+    // This ensures that even before the first compass event fires, the map
+    // is oriented correctly relative to the user's physical movement between
+    // shutter-press and map-load.
+    double initialDelta = 0.0;
+    if (widget.headingAtStart != null &&
+        widget.capturedReferenceHeading != null) {
+      initialDelta = _shortestArc(
+        widget.headingAtStart! - widget.capturedReferenceHeading!,
+      );
+    }
+
+    _manualRotation = -(
+      (userAngleDeg + initialDelta) * (math.pi / 180.0) + (math.pi / 2)
+    );
+    _initialRouteRotation = -(userAngleDeg * (math.pi / 180.0) + (math.pi / 2));
     _targetRotation = _manualRotation;
 
     if (widget.route != null) {
-      _startCompassTracking(seedHeading: widget.captureHeading);
+      _startCompassTracking(seedHeading: widget.capturedReferenceHeading);
     }
   }
 
@@ -430,7 +442,8 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
     // If route arrives for the first time or identity changes, set initial rotation/view.
     // We compare entityId to avoid recentering when only debug offsets are updated.
     final bool headingChanged =
-        oldWidget.captureHeading != widget.captureHeading;
+        oldWidget.capturedReferenceHeading != widget.capturedReferenceHeading ||
+        oldWidget.headingAtStart != widget.headingAtStart;
     final bool routeStateChanged =
         oldWidget.route == null && widget.route != null;
     final bool routeIdentityChanged =
@@ -767,6 +780,78 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
               ),
             ),
 
+            // Debug Info Panel (Same as stable/ar_intrigration)
+            Positioned(
+              left: 16,
+              top: 100,
+              child: IgnorePointer(
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'DEBUG INFO',
+                        style: TextStyle(
+                          color: Colors.amber,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'API Ang: ${((widget.route?.steps.isNotEmpty ?? false) ? widget.route!.steps.first.from.ang : null)?.toStringAsFixed(1) ?? "N/A"}°',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                        ),
+                      ),
+                      Text(
+                        'Ref Head: ${widget.capturedReferenceHeading?.toStringAsFixed(1) ?? "N/A"}°',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                        ),
+                      ),
+                      Text(
+                        'Plot Head: ${widget.headingAtStart?.toStringAsFixed(1) ?? "N/A"}°',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                        ),
+                      ),
+                      Text(
+                        'Delta: ${(() {
+                          if (widget.headingAtStart == null || widget.capturedReferenceHeading == null) return "N/A";
+                          double d = widget.headingAtStart! - widget.capturedReferenceHeading!;
+                          if (d > 180) d -= 360;
+                          if (d < -180) d += 360;
+                          return d.toStringAsFixed(1);
+                        })()}°',
+                        style: const TextStyle(
+                          color: Colors.cyanAccent,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Map Rot: ${(_manualRotation * 180 / math.pi).toStringAsFixed(1)}°',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
             // Markers Layer
             AnimatedBuilder(
               animation: _transformationController,
@@ -842,7 +927,7 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
               onSnapRotation: () {
                 _snapToInitialRotation();
                 // Re-start compass seeded from the capture-time heading
-                _startCompassTracking(seedHeading: widget.captureHeading);
+                _startCompassTracking(seedHeading: widget.capturedReferenceHeading);
               },
               isAtInitialRotation:
                   (_manualRotation - _initialRouteRotation).abs() < 0.01,

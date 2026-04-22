@@ -125,7 +125,8 @@ class _NavigationPageState extends State<NavigationPage> {
                 state.currentLocation,
               ),
               userPickedCoordinates: widget.userPickedCoordinates,
-              captureHeading: state.heading ?? widget.heading,
+              headingAtStart: state.headingAtStart,
+              capturedReferenceHeading: state.capturedReferenceHeading ?? widget.heading,
             );
           }
           if (state is NavigationError) {
@@ -166,10 +167,8 @@ class _NavigationMapView extends StatefulWidget {
   final Function(DestinationEntity)? onDestinationTap;
   final Map<String, dynamic>? userPickedCoordinates;
 
-  /// Compass heading (degrees, North-based) at the moment the photo was taken.
-  /// Pre-seeds the compass baseline so rotation is correct even if the user
-  /// moved their phone while the map was loading.
-  final double? captureHeading;
+  final double? headingAtStart;
+  final double? capturedReferenceHeading;
 
   const _NavigationMapView({
     super.key,
@@ -183,7 +182,8 @@ class _NavigationMapView extends StatefulWidget {
     this.destinationsByFloor = const {},
     this.onDestinationTap,
     this.userPickedCoordinates,
-    this.captureHeading,
+    this.headingAtStart,
+    this.capturedReferenceHeading,
   });
 
   @override
@@ -359,7 +359,8 @@ class _NavigationMapViewState extends State<_NavigationMapView>
                     widget.currentLocation.floor
                         ?.replaceAll('_floor', '')
                         .trim()),
-                captureHeading: widget.captureHeading,
+                headingAtStart: widget.headingAtStart,
+                capturedReferenceHeading: widget.capturedReferenceHeading,
                 onRetry: () => context.read<NavigationBloc>().add(
                   InitializeNavigationEvent(
                     widget.destination,

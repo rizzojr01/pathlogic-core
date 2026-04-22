@@ -210,7 +210,6 @@ class _LocationInputViewState extends State<LocationInputView> {
       return;
     }
 
-    // Mobile Capture Logic
     if (_controller == null ||
         !_controller!.value.isInitialized ||
         _isCapturing) {
@@ -218,10 +217,22 @@ class _LocationInputViewState extends State<LocationInputView> {
     }
 
     setState(() => _isCapturing = true);
-    final headingAtCapture = _currentHeading;
 
     try {
+      // 1. Capture the heading IMMEDIATELY
+      final capturedHeading = _currentHeading;
+
+      // 2. Take the picture
       final image = await _controller!.takePicture();
+
+      // Ensure the file is fully written before reading
+      final imageFile = File(image.path);
+      int retryCount = 0;
+      while (!await imageFile.exists() && retryCount < 5) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        retryCount++;
+      }
+
       final isClear = await _isImageClear(image.path);
 
       if (mounted) {
@@ -232,9 +243,9 @@ class _LocationInputViewState extends State<LocationInputView> {
                 (_floorMapBloc.state as FloorMapReady).selectedFloor;
           }
           _logger.info(
-            'Image Captured with Heading: ${headingAtCapture?.toStringAsFixed(2)}°',
+            'Image Captured with Heading: ${capturedHeading?.toStringAsFixed(2)}°',
           );
-          widget.onImageCaptured(image.path, selectedFloor, headingAtCapture);
+          widget.onImageCaptured(image.path, selectedFloor, capturedHeading);
         } else {
           snackbar.CustomSnackBar.show(
             context,

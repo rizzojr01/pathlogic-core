@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_compass/flutter_compass.dart';
 
 import '../../../../shared/services/destinations_cache_service.dart';
 import '../../../../shared/services/floor_plan_cache_service.dart';
@@ -250,6 +251,25 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
           ),
         );
 
+        // --- Final Heading Capture (Plot Heading) ---
+        // Try getting heading from simple compass (same as capture)
+        double? finalPlotHeading;
+        try {
+          final compassEvent = await FlutterCompass.events?.first.timeout(
+            const Duration(milliseconds: 500),
+          );
+          finalPlotHeading = compassEvent?.heading;
+          if (finalPlotHeading != null) {
+            getIt<AppLogger>().info(
+              '🧭 NavigationBloc: finalPlotHeading from Compass: $finalPlotHeading',
+            );
+          }
+        } catch (e) {
+          getIt<AppLogger>().error(
+            '🧭 NavigationBloc: Compass failed: $e',
+          );
+        }
+
         emit(
           NavigationReady(
             currentLocation: route.origin.copyWith(floor: actualStartingFloor),
@@ -259,7 +279,8 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
             destinations: destinations,
             floorPlansByFloor: floorPlansByFloor,
             destinationsByFloor: destinationsByFloor,
-            heading: event.heading,
+            headingAtStart: finalPlotHeading,
+            capturedReferenceHeading: event.heading,
           ),
         );
       },
