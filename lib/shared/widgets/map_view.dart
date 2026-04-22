@@ -271,7 +271,7 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
         // _manualRotation to reach this value.
         _targetRotation = _initialRouteRotation - delta * math.pi / 180.0;
 
-        if (mounted && !_compassActive) setState(() => _compassActive = true);
+        if (mounted) setState(() => _compassActive = true);
       });
     });
   }
@@ -844,6 +844,14 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,
+                        ),
+                      ),
+                      Text(
+                        'Cur Compass: ${_smoothedHeading.toStringAsFixed(1)}°',
+                        style: const TextStyle(
+                          color: Colors.greenAccent,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],

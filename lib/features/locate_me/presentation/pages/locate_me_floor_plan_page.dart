@@ -94,7 +94,7 @@ class _LocateMeFloorPlanPageState extends State<LocateMeFloorPlanPage> {
                         }
                       },
                       autoCenterOnUser: true,
-                      captureHeading: state.heading,
+                      capturedReferenceHeading: state.heading,
                     ),
                     // Offset Settings Button
                     Positioned(
@@ -153,7 +153,9 @@ class _LocateMeFloorPlanPageState extends State<LocateMeFloorPlanPage> {
           Expanded(
             child: GestureDetector(
               onLongPress: () {
-                FirebaseCrashlytics.instance.log('Manual crash triggered by user');
+                FirebaseCrashlytics.instance.log(
+                  'Manual crash triggered by user',
+                );
                 FirebaseCrashlytics.instance.crash();
               },
               child: const Text(
