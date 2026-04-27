@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_compass/flutter_compass.dart';
+import 'package:sensors_plus/sensors_plus.dart';
 import 'package:fuzzy/fuzzy.dart';
 
 import '../../features/destination/domain/entities/destination_entity.dart';
@@ -82,8 +83,11 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
 
   // Compass tracking and smooth interpolation
   StreamSubscription<CompassEvent>? _compassSubscription;
+  StreamSubscription<GyroscopeEvent>? _gyroSubscription;
+  DateTime? _lastGyroTime;
   double? _initialCompassHeading; // heading (degrees) when tracking started
   double _smoothedHeading = 0.0; // EMA-filtered heading, avoids noise spikes
+  double _fusedHeading = 0.0; // Gyro-assisted heading (the "truth" we use)
   double _targetRotation = 0.0; // The rotation we want to reach (radians)
   late Ticker _rotationTicker;
   bool _headingInitialized = false;
@@ -93,7 +97,7 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
   // Configuration for rotation stability
   static const double _baseCompassAlpha = 0.20; // Smoothing factor for sensor
   static const double _tickerLerpFactor =
-      0.35; // Speed of inter-frame smoothing
+      0.75; // Higher = more responsive, less lag (0.75 is snappy but smooth)
 
   final TextEditingController _searchController = TextEditingController();
   List<DestinationEntity> _filteredDestinations = [];
@@ -211,69 +215,81 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
       // • Otherwise fall back to null, which means the first compass event
       //   will become the baseline (legacy behaviour).
       _initialCompassHeading = seedHeading;
+      if (seedHeading != null) {
+        _fusedHeading = seedHeading;
+        _smoothedHeading = seedHeading;
+        _headingInitialized = true;
+      }
+
+      // ── 1. Gyroscope Integration (The Predictor) ──────────────────────────
+      // Gyroscope provides extremely accurate short-term rotation but drifts.
+      _gyroSubscription = gyroscopeEvents.listen((event) {
+        if (!mounted) return;
+        final now = DateTime.now();
+        if (_lastGyroTime != null) {
+          final dt = now.difference(_lastGyroTime!).inMicroseconds / 1000000.0;
+
+          // Integrated rotation around the vertical axis (z)
+          // Note: event.z is rad/s. Conversion: rad * 180 / pi = deg
+          final gyroRotation = event.z * dt * (180.0 / math.pi);
+
+          // ── Gyro Deadzone ──────────────────────────────────────────────────
+          // Ignore extremely tiny vibrations to prevent "jitter" when stationary.
+          if (gyroRotation.abs() < 0.01) return;
+
+          // Update fused heading by subtracting gyro rotation
+          // (Compass heading increases clockwise, but gyro Z is usually CCW)
+          _fusedHeading = (_fusedHeading - gyroRotation) % 360;
+          if (_fusedHeading < 0) _fusedHeading += 360;
+
+          _updateTargetRotation();
+        }
+        _lastGyroTime = now;
+      });
+
+      // ── 2. Compass Correction (The Anchor) ────────────────────────────────
+      // Compass provides an absolute heading (North) but is noisy/laggy.
       _compassSubscription = FlutterCompass.events?.listen((event) {
         final heading = event.heading;
         if (heading == null || !mounted) return;
-
         if (heading.isNaN || heading.isInfinite) return;
 
-        // ── Exponential moving average (low-pass) filter ────────────────────
-        // Raw magnetometer is very noisy indoors. EMA keeps the value stable
-        // when stationary while still tracking real rotation smoothly.
         if (!_headingInitialized) {
           _smoothedHeading = heading;
+          _fusedHeading = heading;
           _headingInitialized = true;
         } else {
-          // ── Adaptive Alpha ─────────────────────────────────────────────────
-          // Smaller movements are filtered more aggressively for stability.
-          // Larger, faster movements use a higher alpha for responsiveness.
+          // Update smoothed compass (EMA)
           final rawArc = _shortestArc(heading - _smoothedHeading).abs();
           double alpha = _baseCompassAlpha;
-          if (rawArc < 3) {
-            alpha =
-                _baseCompassAlpha *
-                0.3; // Very slow changes = maximum stability
-          } else if (rawArc > 10) {
-            alpha =
-                _baseCompassAlpha *
-                2.5; // Intentional turns = high responsiveness
-          }
+          if (rawArc < 3)
+            alpha *= 0.3;
+          else if (rawArc > 10)
+            alpha *= 2.5;
 
-          // If accuracy is poor, aggressively dampen the signal
           final accuracy = event.accuracy;
           if (accuracy != null && (accuracy > 15 || accuracy < 0)) {
             alpha *= 0.4;
           }
 
-          // Interpolate using shortest arc to handle the 0↔360° wrap correctly
-          final arc = _shortestArc(heading - _smoothedHeading);
-
-          // ── Dead Zone ──────────────────────────────────────────────────────
-          // If the movement is extremely small (noise), ignore it to prevent
-          // the "jittering" effect when the phone is stationary.
-          if (arc.abs() < 0.8) return; // Ignore movements < 0.8 degrees
-
-          _smoothedHeading += alpha * arc;
-          _smoothedHeading = _smoothedHeading % 360;
-          if (_smoothedHeading < 0) _smoothedHeading += 360;
+          final compassArc = _shortestArc(heading - _smoothedHeading);
+          if (compassArc.abs() >= 0.8) {
+            _smoothedHeading = (_smoothedHeading + alpha * compassArc) % 360;
+            if (_smoothedHeading < 0) _smoothedHeading += 360;
+          }
         }
 
-        // Capture the baseline heading on the very first event
         _initialCompassHeading ??= _smoothedHeading;
-        if (_initialCompassHeading!.isNaN) {
-          _initialCompassHeading = _smoothedHeading;
-        }
 
-        // How many degrees has the user physically rotated since tracking began?
-        final delta = _shortestArc(_smoothedHeading - _initialCompassHeading!);
-
-        // Update the target rotation. The Ticker will smoothly interpolate
-        // _manualRotation to reach this value.
-        _targetRotation = _initialRouteRotation - delta * math.pi / 180.0;
-
-        if (mounted) setState(() => _compassActive = true);
+        if (mounted && !_compassActive) setState(() => _compassActive = true);
       });
     });
+  }
+
+  void _updateTargetRotation() {
+    if (_initialCompassHeading == null) return;
+    final delta = _shortestArc(_fusedHeading - _initialCompassHeading!);
+    _targetRotation = _initialRouteRotation - delta * math.pi / 180.0;
   }
 
   /// Returns the shortest signed arc (−180..+180) between two headings.
@@ -338,9 +354,8 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
       );
     }
 
-    _manualRotation = -(
-      (userAngleDeg + initialDelta) * (math.pi / 180.0) + (math.pi / 2)
-    );
+    _manualRotation =
+        -((userAngleDeg + initialDelta) * (math.pi / 180.0) + (math.pi / 2));
     _initialRouteRotation = -(userAngleDeg * (math.pi / 180.0) + (math.pi / 2));
     _targetRotation = _manualRotation;
 
@@ -470,6 +485,7 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
   void dispose() {
     _compassStartTimer?.cancel();
     _compassSubscription?.cancel();
+    _gyroSubscription?.cancel();
     _rotationTicker.dispose();
     _routeAnimationController.dispose();
     _snapRotationController.dispose();
@@ -847,9 +863,16 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
                         ),
                       ),
                       Text(
-                        'Cur Compass: ${_smoothedHeading.toStringAsFixed(1)}°',
+                        'Smoothed Comp: ${_smoothedHeading.toStringAsFixed(1)}°',
                         style: const TextStyle(
                           color: Colors.greenAccent,
+                          fontSize: 11,
+                        ),
+                      ),
+                      Text(
+                        'Fused Head: ${_fusedHeading.toStringAsFixed(1)}°',
+                        style: const TextStyle(
+                          color: Colors.orangeAccent,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
@@ -935,7 +958,9 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
               onSnapRotation: () {
                 _snapToInitialRotation();
                 // Re-start compass seeded from the capture-time heading
-                _startCompassTracking(seedHeading: widget.capturedReferenceHeading);
+                _startCompassTracking(
+                  seedHeading: widget.capturedReferenceHeading,
+                );
               },
               isAtInitialRotation:
                   (_manualRotation - _initialRouteRotation).abs() < 0.01,
