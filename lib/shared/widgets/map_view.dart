@@ -81,23 +81,34 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
   bool _hasRecenteredOnUser = false;
   bool _hasSetInitialRotation = false;
 
-  // Compass tracking and smooth interpolation
+  // Compass / gyro / accel tracking
   StreamSubscription<CompassEvent>? _compassSubscription;
   StreamSubscription<GyroscopeEvent>? _gyroSubscription;
-  DateTime? _lastGyroTime;
+  StreamSubscription<AccelerometerEvent>? _accelSubscription;
+
+  // Gravity direction in device frame (EMA-smoothed from accelerometer).
+  // Default assumes portrait orientation: +Y is up → accel = (0, +g, 0).
+  final List<double> _smoothedAccel = [0.0, 9.81, 0.0];
+
+  // Current yaw angular velocity (deg/s), EMA-smoothed.
+  // Negative = turning right (clockwise from above) — matches compass convention.
+  double _gyroYawRateDegPerSec = 0.0;
+
   double? _initialCompassHeading; // heading (degrees) when tracking started
-  double _smoothedHeading = 0.0; // EMA-filtered heading, avoids noise spikes
-  double _fusedHeading = 0.0; // Gyro-assisted heading (the "truth" we use)
-  double _targetRotation = 0.0; // The rotation we want to reach (radians)
+  double _fusedHeading = 0.0; // gyro-integrated heading, compass-corrected
+  double _targetRotation = 0.0; // map rotation we want (radians)
   late Ticker _rotationTicker;
+  Duration? _lastTickerElapsed; // for per-frame dt
   bool _headingInitialized = false;
-  bool _compassActive = false; // true once tracking starts
+  bool _compassActive = false; // true once compass fires
   Timer? _compassStartTimer;
 
-  // Configuration for rotation stability
-  static const double _baseCompassAlpha = 0.20; // Smoothing factor for sensor
-  static const double _tickerLerpFactor =
-      0.75; // Higher = more responsive, less lag (0.75 is snappy but smooth)
+  // EMA alpha for accelerometer smoothing (slow = stable gravity estimate)
+  static const double _accelAlpha = 0.05;
+  // EMA alpha for gyro rate smoothing (0.5 = responsive but spike-free)
+  static const double _gyroAlpha = 0.5;
+  // Weight for compass drift correction per compass event (very gentle)
+  static const double _compassDriftK = 0.015;
 
   final TextEditingController _searchController = TextEditingController();
   List<DestinationEntity> _filteredDestinations = [];
@@ -119,19 +130,36 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
     _filteredDestinations = widget.destinations;
     _searchController.addListener(_onSearchChanged);
 
-    _rotationTicker = createTicker((_) {
-      if (_manualRotation == _targetRotation) return;
+    _rotationTicker = createTicker((elapsed) {
+      // Compute per-frame delta time for frame-rate-independent integration.
+      final dt = _lastTickerElapsed == null
+          ? 0.0
+          : (elapsed - _lastTickerElapsed!).inMicroseconds / 1e6;
+      _lastTickerElapsed = elapsed;
 
-      // Smoothly interpolate rotation using shortest arc in radians
+      if (!_headingInitialized || _initialCompassHeading == null) return;
+      // Skip first frame (dt == 0) and stale frames (app was backgrounded).
+      if (dt <= 0.0 || dt > 0.1) return;
+
+      // Integrate gyro yaw rate into fused heading (per-frame, frame-rate-
+      // independent). _gyroYawRateDegPerSec is negative when turning right,
+      // so subtracting it increases heading clockwise — matching compass convention.
+      if (_gyroYawRateDegPerSec.abs() > 0.05) {
+        _fusedHeading = (_fusedHeading - _gyroYawRateDegPerSec * dt) % 360;
+        if (_fusedHeading < 0) _fusedHeading += 360;
+      }
+
+      _updateTargetRotation();
+
+      // Apply via shortest arc. Use lerp factor close to 1.0 so the map
+      // tracks gyro instantly; the EMA on _gyroYawRateDegPerSec already
+      // provides the needed smoothing.
       double diff = _targetRotation - _manualRotation;
       while (diff < -math.pi) diff += 2 * math.pi;
       while (diff > math.pi) diff -= 2 * math.pi;
 
-      if (diff.abs() < 0.001) {
-        _applyManualRotation(_targetRotation);
-      } else {
-        _applyManualRotation(_manualRotation + diff * _tickerLerpFactor);
-      }
+      if (diff.abs() < 0.0001) return;
+      _applyManualRotation(_manualRotation + diff * 0.9);
     })..start();
   }
 
@@ -195,11 +223,19 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
     });
   }
 
-  // ── compass ────────────────────────────────────────────────────────────────
+  // ── compass / gyro / accel ─────────────────────────────────────────────────
 
-  /// Starts compass tracking after [delay].
-  /// Saves the heading at the moment tracking begins as the baseline,
-  /// then applies: mapRotation = initialRouteRotation − deltaHeading.
+  /// Starts sensor tracking after [delay].
+  ///
+  /// Architecture: three-sensor complementary filter.
+  ///   • Accelerometer → stable gravity direction in device frame.
+  ///   • Gyroscope      → yaw rate = gyro projected onto gravity → smooth,
+  ///                      frame-rate-independent integration in the ticker.
+  ///   • Compass        → absolute heading used only for gentle drift correction.
+  ///
+  /// This approach works correctly regardless of phone orientation (flat,
+  /// portrait, landscape, or any tilt) because the gravity projection
+  /// automatically picks the right gyro axis combination.
   void _startCompassTracking({
     Duration delay = Duration.zero,
     double? seedHeading,
@@ -208,79 +244,92 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
     _compassStartTimer = Timer(delay, () {
       if (!mounted) return;
       _compassSubscription?.cancel();
-      // Pre-seed the compass baseline:
-      // • If seedHeading is provided (capture-time heading), use it directly.
-      //   This anchors the delta calculation to the exact moment the photo was
-      //   taken, so any phone movement DURING map loading is compensated for.
-      // • Otherwise fall back to null, which means the first compass event
-      //   will become the baseline (legacy behaviour).
+      _gyroSubscription?.cancel();
+      _accelSubscription?.cancel();
+
+      // Pre-seed with capture-time heading so map is correct before any
+      // sensor events fire.
       _initialCompassHeading = seedHeading;
       if (seedHeading != null) {
         _fusedHeading = seedHeading;
-        _smoothedHeading = seedHeading;
         _headingInitialized = true;
       }
 
-      // ── 1. Gyroscope Integration (The Predictor) ──────────────────────────
-      // Gyroscope provides extremely accurate short-term rotation but drifts.
-      _gyroSubscription = gyroscopeEvents.listen((event) {
+      // ── 1. Accelerometer: gravity direction estimate ───────────────────────
+      // EMA-filter the raw accel to suppress vibration.  _smoothedAccel holds
+      // the "up" direction in device coordinates; we use this to project the
+      // gyro vector onto the true vertical axis regardless of phone tilt.
+      _accelSubscription = accelerometerEvents.listen((event) {
         if (!mounted) return;
-        final now = DateTime.now();
-        if (_lastGyroTime != null) {
-          final dt = now.difference(_lastGyroTime!).inMicroseconds / 1000000.0;
-
-          // Integrated rotation around the vertical axis (z)
-          // Note: event.z is rad/s. Conversion: rad * 180 / pi = deg
-          final gyroRotation = event.z * dt * (180.0 / math.pi);
-
-          // ── Gyro Deadzone ──────────────────────────────────────────────────
-          // Ignore extremely tiny vibrations to prevent "jitter" when stationary.
-          if (gyroRotation.abs() < 0.01) return;
-
-          // Update fused heading by subtracting gyro rotation
-          // (Compass heading increases clockwise, but gyro Z is usually CCW)
-          _fusedHeading = (_fusedHeading - gyroRotation) % 360;
-          if (_fusedHeading < 0) _fusedHeading += 360;
-
-          _updateTargetRotation();
-        }
-        _lastGyroTime = now;
+        _smoothedAccel[0] =
+            (1 - _accelAlpha) * _smoothedAccel[0] + _accelAlpha * event.x;
+        _smoothedAccel[1] =
+            (1 - _accelAlpha) * _smoothedAccel[1] + _accelAlpha * event.y;
+        _smoothedAccel[2] =
+            (1 - _accelAlpha) * _smoothedAccel[2] + _accelAlpha * event.z;
       });
 
-      // ── 2. Compass Correction (The Anchor) ────────────────────────────────
-      // Compass provides an absolute heading (North) but is noisy/laggy.
+      // ── 2. Gyroscope: yaw rate via gravity projection ─────────────────────
+      // Problem with using event.z alone: it is only the correct yaw axis when
+      // the phone is flat.  When held upright the yaw axis is ~Y, and at an
+      // arbitrary tilt it is some blend of both.
+      //
+      // Fix: project the 3-D angular-velocity vector onto the unit gravity
+      // vector.  The result is the angular velocity around the Earth-vertical
+      // axis — the true yaw — for any phone orientation.
+      //
+      // Sign convention (Android right-hand rule, both sensors):
+      //   • dot(gravity_unit, gyro) is NEGATIVE when turning right (clockwise
+      //     from above), which matches compass increasing clockwise.
+      //   • The ticker subtracts (yaw_rate * dt) from _fusedHeading so that
+      //     a rightward turn increases the heading. ✓
+      _gyroSubscription = gyroscopeEvents.listen((event) {
+        if (!mounted) return;
+
+        final ax = _smoothedAccel[0];
+        final ay = _smoothedAccel[1];
+        final az = _smoothedAccel[2];
+        final mag = math.sqrt(ax * ax + ay * ay + az * az);
+        if (mag < 0.5) return; // phone in freefall — skip
+
+        // Gravity unit vector in device frame
+        final gx = ax / mag, gy = ay / mag, gz = az / mag;
+
+        // Yaw rate in deg/s: component of angular velocity along gravity axis
+        final rawYawDeg =
+            (gx * event.x + gy * event.y + gz * event.z) * (180.0 / math.pi);
+
+        // EMA low-pass filter to smooth out sensor jitter without adding lag
+        _gyroYawRateDegPerSec =
+            _gyroAlpha * rawYawDeg + (1 - _gyroAlpha) * _gyroYawRateDegPerSec;
+      });
+
+      // ── 3. Compass: gentle drift correction only ──────────────────────────
+      // Compass gives absolute North but is noisy and lags sudden moves.
+      // We trust it only to slowly pull the gyro-integrated heading back to
+      // truth over several seconds, not for real-time tracking.
       _compassSubscription = FlutterCompass.events?.listen((event) {
         final heading = event.heading;
         if (heading == null || !mounted) return;
         if (heading.isNaN || heading.isInfinite) return;
 
         if (!_headingInitialized) {
-          _smoothedHeading = heading;
           _fusedHeading = heading;
           _headingInitialized = true;
+          _initialCompassHeading ??= heading;
         } else {
-          // Update smoothed compass (EMA)
-          final rawArc = _shortestArc(heading - _smoothedHeading).abs();
-          double alpha = _baseCompassAlpha;
-          if (rawArc < 3)
-            alpha *= 0.3;
-          else if (rawArc > 10)
-            alpha *= 2.5;
-
+          // Determine correction weight based on compass accuracy
+          double k = _compassDriftK;
           final accuracy = event.accuracy;
-          if (accuracy != null && (accuracy > 15 || accuracy < 0)) {
-            alpha *= 0.4;
-          }
+          if (accuracy != null && (accuracy > 20 || accuracy < 0)) k *= 0.1;
 
-          final compassArc = _shortestArc(heading - _smoothedHeading);
-          if (compassArc.abs() >= 0.8) {
-            _smoothedHeading = (_smoothedHeading + alpha * compassArc) % 360;
-            if (_smoothedHeading < 0) _smoothedHeading += 360;
-          }
+          // Nudge fused heading toward compass truth (shortest arc)
+          final error = _shortestArc(heading - _fusedHeading);
+          _fusedHeading = (_fusedHeading + k * error) % 360;
+          if (_fusedHeading < 0) _fusedHeading += 360;
         }
 
-        _initialCompassHeading ??= _smoothedHeading;
-
+        _initialCompassHeading ??= _fusedHeading;
         if (mounted && !_compassActive) setState(() => _compassActive = true);
       });
     });
@@ -486,6 +535,7 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
     _compassStartTimer?.cancel();
     _compassSubscription?.cancel();
     _gyroSubscription?.cancel();
+    _accelSubscription?.cancel();
     _rotationTicker.dispose();
     _routeAnimationController.dispose();
     _snapRotationController.dispose();
@@ -863,7 +913,7 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
                         ),
                       ),
                       Text(
-                        'Smoothed Comp: ${_smoothedHeading.toStringAsFixed(1)}°',
+                        'Fused Heading: ${_fusedHeading.toStringAsFixed(1)}°',
                         style: const TextStyle(
                           color: Colors.greenAccent,
                           fontSize: 11,
