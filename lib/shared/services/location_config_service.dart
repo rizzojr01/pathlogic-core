@@ -52,7 +52,7 @@ class LocationConfigService {
   }
 
   /// Image Compression Settings
-  bool get enableCompression => _prefs.getBool(_keyEnableCompression) ?? false;
+  bool get enableCompression => _prefs.getBool(_keyEnableCompression) ?? true;
   int get maxHeight => _prefs.getInt(_keyMaxHeight) ?? 640;
   int get maxWidth => _prefs.getInt(_keyMaxWidth) ?? 360;
   int get imageQuality => _prefs.getInt(_keyImageQuality) ?? 100;
