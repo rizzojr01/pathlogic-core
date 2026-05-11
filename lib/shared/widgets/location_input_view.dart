@@ -10,6 +10,9 @@ import 'package:flutter_compass/flutter_compass.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:async';
 
+import '../../core/services/speech_service.dart';
+import '../../routes/app_router.dart';
+
 import '../../core/utils/logger.dart';
 
 import '../../features/destination/presentation/bloc/floor_map_bloc.dart';
@@ -41,7 +44,7 @@ class LocationInputView extends StatefulWidget {
   State<LocationInputView> createState() => _LocationInputViewState();
 }
 
-class _LocationInputViewState extends State<LocationInputView> {
+class _LocationInputViewState extends State<LocationInputView> with TickerProviderStateMixin, WidgetsBindingObserver, RouteAware {
   CameraController? _controller;
   CameraMacOSController? _macOSController;
   bool _isInitializing = true;
@@ -56,6 +59,10 @@ class _LocationInputViewState extends State<LocationInputView> {
   late FloorMapBloc _floorMapBloc;
   FixedExtentScrollController? _floorController;
 
+  late AnimationController _pulseController;
+  Timer? _guidanceTimer;
+  bool _showRevisedGuidance = false;
+
   @override
   void initState() {
     super.initState();
@@ -63,6 +70,34 @@ class _LocationInputViewState extends State<LocationInputView> {
     _initializeCompass();
     _floorMapBloc = FloorMapBloc()
       ..add(FloorMapInitialized(initialFloor: widget.initialFloor));
+
+    WidgetsBinding.instance.addObserver(this);
+
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    _startGuidanceTimer();
+    
+    // Audio feedback: Select destination
+    getIt<SpeechService>().speak("Please capture a photo to find your location.");
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    AppRouter.routeObserver.subscribe(this, ModalRoute.of(context) as ModalRoute<void>);
+  }
+
+  void _startGuidanceTimer() {
+    _guidanceTimer?.cancel();
+    _guidanceTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted && widget.tabController.index == 0) {
+        setState(() => _showRevisedGuidance = true);
+        getIt<SpeechService>().speak("Tap the capture button at the bottom to find your location.");
+      }
+    });
   }
 
   void _initializeCompass() {
@@ -72,11 +107,6 @@ class _LocationInputViewState extends State<LocationInputView> {
           setState(() {
             _currentHeading = event.heading;
           });
-          if (_currentHeading != null) {
-            _logger.verbose(
-              'Compass Orientation: ${_currentHeading?.toStringAsFixed(2)}°',
-            );
-          }
         }
       });
     } catch (e) {
@@ -99,21 +129,77 @@ class _LocationInputViewState extends State<LocationInputView> {
 
   @override
   void dispose() {
+    AppRouter.routeObserver.unsubscribe(this);
+    WidgetsBinding.instance.removeObserver(this);
     _controller?.dispose();
+    _controller = null; // Important: nullify after dispose
     _floorController?.dispose();
     _compassSubscription?.cancel();
     _floorMapBloc.close();
+    _pulseController.dispose();
+    _guidanceTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final CameraController? cameraController = _controller;
+
+    // App state changed before we got the chance to initialize.
+    if (cameraController == null || !cameraController.value.isInitialized) {
+      return;
+    }
+
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      // Set _isInitializing to true to hide the preview in the UI
+      if (mounted) setState(() => _isInitializing = true);
+      cameraController.dispose();
+      _controller = null; // Important: nullify after dispose
+    } else if (state == AppLifecycleState.resumed) {
+      _initializeCamera();
+    }
+  }
+
+  @override
+  void didPushNext() {
+    // Called when a new route is pushed and the current route is no longer visible
+    if (_controller != null) {
+      _controller!.dispose();
+      _controller = null;
+    }
+    if (mounted) setState(() => _isInitializing = true);
+  }
+
+  @override
+  void didPopNext() {
+    // Called when the top route has been popped off, and the current route shows up
+    _initializeCamera();
   }
 
   Future<void> _initializeCamera() async {
     try {
+      if (mounted) {
+        setState(() {
+          _errorMessage = null;
+          _isInitializing = true;
+        });
+      }
+
+      // Small delay to allow previous camera controllers (e.g. from NavigationPage)
+      // to fully release hardware resources before we try to take them.
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return;
+
       if (Platform.isMacOS) {
         if (mounted) setState(() => _errorMessage = null);
         return;
       }
 
-      if (mounted) setState(() => _errorMessage = null);
+      // Dispose old controller if it exists
+      if (_controller != null) {
+        await _controller!.dispose();
+        _controller = null;
+      }
 
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
@@ -132,7 +218,12 @@ class _LocationInputViewState extends State<LocationInputView> {
         enableAudio: false,
       );
 
-      await _controller!.initialize();
+      // Add timeout to prevent hanging indefinitely
+      await _controller!.initialize().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw TimeoutException('Camera initialization timed out'),
+      );
+      
       if (mounted) {
         setState(() => _isInitializing = false);
       }
@@ -216,7 +307,12 @@ class _LocationInputViewState extends State<LocationInputView> {
       return;
     }
 
-    setState(() => _isCapturing = true);
+  setState(() {
+      _isCapturing = true;
+      _showRevisedGuidance = false;
+    });
+    _guidanceTimer?.cancel();
+    getIt<SpeechService>().speak("Capturing photo...");
 
     try {
       // 1. Capture the heading IMMEDIATELY
@@ -315,37 +411,7 @@ class _LocationInputViewState extends State<LocationInputView> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   const SizedBox(width: 60), // Spacer for symmetry
-                  GestureDetector(
-                    onTap: _captureImage,
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: theme.colorScheme.primary,
-                        boxShadow: [
-                          BoxShadow(
-                            color: theme.colorScheme.primary.withValues(
-                              alpha: 0.4,
-                            ),
-                            blurRadius: 20,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: _isCapturing
-                          ? const Center(
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                              ),
-                            )
-                          : Icon(
-                              Icons.camera_rounded,
-                              color: theme.colorScheme.onPrimary,
-                              size: 40,
-                            ),
-                    ),
-                  ),
+                  _buildCaptureButton(theme),
                   const SizedBox(width: 60), // Spacer for symmetry
                 ],
               ),
@@ -409,49 +475,121 @@ class _LocationInputViewState extends State<LocationInputView> {
           onToggle: () => setState(() => _showGuidance = !_showGuidance),
         ),
 
-        // 3. Capture Button
+        // 3. Guidance Overlay (Dark bottom area)
+        if (_showRevisedGuidance)
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 200,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.8),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+        // 4. Capture Button & Arrow
         Positioned(
           bottom: 40,
           left: 0,
           right: 0,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(width: 60), // Spacer for symmetry
-              GestureDetector(
-                onTap: _captureImage,
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: theme.colorScheme.primary,
-                    boxShadow: [
-                      BoxShadow(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.4),
-                        blurRadius: 20,
-                        spreadRadius: 2,
+              if (_showRevisedGuidance) ...[
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 600),
+                  builder: (context, value, child) {
+                    return Transform.translate(
+                      offset: Offset(0, 10 * (1 - value)),
+                      child: Opacity(
+                        opacity: value,
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Tap to find yourself',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: theme.colorScheme.primary,
+                        size: 32,
                       ),
                     ],
                   ),
-                  child: _isCapturing
-                      ? const Center(
-                          child: CircularProgressIndicator(color: Colors.white),
-                        )
-                      : Icon(
-                          Icons.camera_rounded,
-                          color: theme.colorScheme.onPrimary,
-                          size: 40,
-                        ),
                 ),
+                const SizedBox(height: 8),
+              ],
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  const SizedBox(width: 60), // Spacer for symmetry
+                  _buildCaptureButton(theme),
+                  const SizedBox(width: 60), // Spacer for symmetry
+                ],
               ),
-              const SizedBox(width: 60), // Spacer for symmetry
             ],
           ),
         ),
       ],
     );
   }
+
+  Widget _buildCaptureButton(ThemeData theme) {
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, child) {
+        return GestureDetector(
+          onTap: _captureImage,
+          child: Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: theme.colorScheme.primary,
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.primary.withValues(
+                    alpha: 0.4 + (0.2 * _pulseController.value),
+                  ),
+                  blurRadius: 15 + (15 * _pulseController.value),
+                  spreadRadius: 2 + (4 * _pulseController.value),
+                ),
+              ],
+            ),
+            child: _isCapturing
+                ? const Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  )
+                : Icon(
+                    Icons.camera_rounded,
+                    color: theme.colorScheme.onPrimary,
+                    size: 40,
+                  ),
+          ),
+        );
+      },
+    );
+  }
+
 
   Widget _buildFloorPlanTab(ThemeData theme) {
     final locationConfig = getIt<LocationConfigService>();

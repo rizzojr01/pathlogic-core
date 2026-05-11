@@ -5,6 +5,7 @@ import 'package:smart_sense/core/services/storage_service.dart';
 import 'package:smart_sense/core/utils/logger.dart';
 import 'package:smart_sense/core/constants/api_routes.dart';
 import 'package:smart_sense/theme/theme_bloc.dart';
+import 'package:smart_sense/core/services/speech_service.dart';
 
 // Shared
 import 'package:smart_sense/shared/services/location_config_service.dart';
@@ -93,6 +94,7 @@ Future<void> initializeDependencies() async {
   getIt.registerLazySingleton<ApiClient>(
     () => ApiClient(baseUrl: ApiRoutes.baseUrl, logger: getIt()),
   );
+  getIt.registerLazySingleton<SpeechService>(() => SpeechService());
 
   // Shared Services
   getIt.registerLazySingleton<LocationConfigService>(

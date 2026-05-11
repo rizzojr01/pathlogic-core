@@ -24,6 +24,8 @@ import '../injection.dart';
 import '../features/destination/presentation/pages/floor_map_page.dart';
 
 class AppRouter {
+  static final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
+
   static const String splash = '/';
   static const String onboarding = '/onboarding';
   static const String login = '/login';
@@ -41,6 +43,7 @@ class AppRouter {
 
   static final GoRouter router = GoRouter(
     initialLocation: splash,
+    observers: [routeObserver],
     routes: [
       GoRoute(path: splash, builder: (context, state) => const SplashPage()),
       GoRoute(

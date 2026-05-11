@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_sense/injection.dart';
+import 'package:smart_sense/core/services/speech_service.dart';
 import 'package:smart_sense/shared/services/location_config_service.dart';
 import 'package:smart_sense/shared/widgets/step_indicator.dart';
 import 'package:smart_sense/shared/widgets/search_bar.dart';
@@ -295,6 +296,8 @@ class _DestinationTile extends StatelessWidget {
           context.read<DestinationBloc>().add(
             SelectDestinationEvent(destination.id),
           );
+
+          getIt<SpeechService>().speak("Destination selected: ${destination.name}. Proceeding to camera.");
 
           // 2. Navigate immediately
           if (destination is DestinationEntity) {

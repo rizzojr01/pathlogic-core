@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:camera/camera.dart';
 
 import '../../../../injection.dart';
 import '../../../../shared/services/floor_plan_cache_service.dart';
@@ -16,6 +17,8 @@ import '../../domain/entities/multi_floor_navigation_step_entity.dart';
 import '../bloc/navigation_bloc.dart';
 import '../bloc/navigation_event.dart';
 import '../bloc/navigation_state.dart';
+import 'package:flutter_compass/flutter_compass.dart';
+import '../../../../core/services/speech_service.dart';
 import '../../../../shared/widgets/map_view.dart';
 import '../../../locate_me/presentation/widgets/destination_bottom_sheet.dart';
 
@@ -58,45 +61,6 @@ class _NavigationPageState extends State<NavigationPage> {
     );
   }
 
-  void _showDestinationBottomSheet(
-    BuildContext context,
-    DestinationEntity destination,
-    LocationEntity? currentLocation,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (modalContext) => DestinationBottomSheet(
-        destination: destination,
-        onNavigate: () {
-          if (modalContext.mounted) Navigator.pop(modalContext);
-
-          // If we have a current location from the existing route session,
-          // reuse those coordinates to recalculate a new route without
-          // forcing the user to take another photo.
-          if (currentLocation != null) {
-            context.read<NavigationBloc>().add(
-              InitializeNavigationEvent(
-                destination,
-                userPickedCoordinates: {
-                  'x': currentLocation.x,
-                  'y': currentLocation.y,
-                  'ang': currentLocation.ang,
-                  'floor': currentLocation.floor,
-                },
-                pickedFloor: currentLocation.floor,
-                // Passing null for imagePath/heading as we use coordinates
-              ),
-            );
-          } else {
-            // Fallback to original behaviour if coordinates aren't available
-            if (mounted) context.pushReplacement('/camera', extra: destination);
-          }
-        },
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,14 +83,11 @@ class _NavigationPageState extends State<NavigationPage> {
               floorPlansByFloor: state.floorPlansByFloor,
               destinations: state.destinations,
               destinationsByFloor: state.destinationsByFloor,
-              onDestinationTap: (d) => _showDestinationBottomSheet(
-                this.context,
-                d,
-                state.currentLocation,
-              ),
+              onDestinationTap: (d) {}, // Handled internally by _NavigationMapView
               userPickedCoordinates: widget.userPickedCoordinates,
               headingAtStart: state.headingAtStart,
-              capturedReferenceHeading: state.capturedReferenceHeading ?? widget.heading,
+              capturedReferenceHeading:
+                  state.capturedReferenceHeading ?? widget.heading,
             );
           }
           if (state is NavigationError) {
@@ -198,6 +159,10 @@ class _NavigationMapViewState extends State<_NavigationMapView>
   /// Local copy of floor plans — sourced from bloc state (pre-downloaded)
   late Map<String, String> _floorPlansByFloor;
 
+  CameraController? _cameraController;
+  bool _isCameraReady = false;
+  bool _isCapturing = false;
+
   @override
   void initState() {
     super.initState();
@@ -212,6 +177,72 @@ class _NavigationMapViewState extends State<_NavigationMapView>
       duration: const Duration(milliseconds: 250),
     );
     _floorAnimController.forward();
+
+    _initCamera();
+
+    // Audio feedback: Select destination
+    getIt<SpeechService>().speak(
+      "Navigation started. You can tap the camera view to update your location anytime.",
+    );
+  }
+
+  Future<void> _initCamera() async {
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) return;
+
+      _cameraController = CameraController(
+        cameras.first,
+        ResolutionPreset.medium,
+        enableAudio: false,
+      );
+
+      await _cameraController!.initialize();
+      if (mounted) {
+        setState(() => _isCameraReady = true);
+      }
+    } catch (e) {
+      debugPrint('Error initializing camera in navigation: $e');
+    }
+  }
+
+  Future<void> _captureAndRelocalize() async {
+    if (_cameraController == null || !_isCameraReady || _isCapturing) return;
+
+    setState(() => _isCapturing = true);
+    getIt<SpeechService>().speak("Re-localizing...");
+
+    try {
+      final image = await _cameraController!.takePicture();
+
+      // Get current heading if possible
+      double? currentHeading;
+      try {
+        final compassEvent = await FlutterCompass.events?.first.timeout(
+          const Duration(milliseconds: 500),
+        );
+        currentHeading = compassEvent?.heading;
+      } catch (_) {}
+
+      if (mounted) {
+        context.read<NavigationBloc>().add(
+          InitializeNavigationEvent(
+            widget.destination,
+            imagePath: image.path,
+            pickedFloor: _selectedFloor,
+            heading: currentHeading,
+          ),
+        );
+        getIt<SpeechService>().speak("Location updated.");
+      }
+    } catch (e) {
+      debugPrint('Error capturing image in navigation: $e');
+      getIt<SpeechService>().speak("Failed to update location.");
+    } finally {
+      if (mounted) {
+        setState(() => _isCapturing = false);
+      }
+    }
   }
 
   @override
@@ -222,13 +253,56 @@ class _NavigationMapViewState extends State<_NavigationMapView>
     }
   }
 
+  void _showDestinationBottomSheet(
+    BuildContext context,
+    DestinationEntity destination,
+    LocationEntity? currentLocation,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalContext) => DestinationBottomSheet(
+        destination: destination,
+        onNavigate: () {
+          if (modalContext.mounted) Navigator.pop(modalContext);
+
+          // If we have a current location from the existing route session,
+          // reuse those coordinates to recalculate a new route without
+          // forcing the user to take another photo.
+          if (currentLocation != null) {
+            context.read<NavigationBloc>().add(
+              InitializeNavigationEvent(
+                destination,
+                userPickedCoordinates: {
+                  'x': currentLocation.x,
+                  'y': currentLocation.y,
+                  'ang': currentLocation.ang,
+                  'floor': currentLocation.floor,
+                },
+                pickedFloor: currentLocation.floor,
+                // Passing null for imagePath/heading as we use coordinates
+              ),
+            );
+          } else {
+            // Fallback to original behaviour if coordinates aren't available
+            if (mounted) {
+              _cameraController?.dispose();
+              _cameraController = null;
+              context.pushReplacement('/camera', extra: destination);
+            }
+          }
+        },
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _floorAnimController.dispose();
+    _cameraController?.dispose();
     super.dispose();
   }
-
-
 
   // "6_floor" → "6" · "B1_floor" → "B1" · "basement" → "B"
   String _floorLabel(String floor) {
@@ -339,8 +413,13 @@ class _NavigationMapViewState extends State<_NavigationMapView>
         StepIndicator(
           currentStep: 3,
           title: 'Direct Guidance',
-          onBack: () =>
-              context.pushReplacement('/camera', extra: widget.destination),
+          onBack: () async {
+            await _cameraController?.dispose();
+            _cameraController = null;
+            if (mounted) {
+              context.pushReplacement('/camera', extra: widget.destination);
+            }
+          },
         ),
         Expanded(
           child: Stack(
@@ -352,7 +431,11 @@ class _NavigationMapViewState extends State<_NavigationMapView>
                 route: _routeForSelectedFloor,
                 floorPlanBase64: _floorPlanForSelected,
                 destinations: _destsForSelectedFloor,
-                onDestinationTap: widget.onDestinationTap,
+                onDestinationTap: (d) => _showDestinationBottomSheet(
+                  context,
+                  d,
+                  widget.currentLocation,
+                ),
                 currentFloor: widget.currentLocation.floor,
                 isCheckpoint:
                     (_selectedFloor.replaceAll('_floor', '').trim() !=
@@ -369,10 +452,16 @@ class _NavigationMapViewState extends State<_NavigationMapView>
                     pickedFloor: _selectedFloor,
                   ),
                 ),
-                onRelocalize: () => context.pushReplacement(
-                  '/camera',
-                  extra: widget.destination,
-                ),
+                onRelocalize: () async {
+                  await _cameraController?.dispose();
+                  _cameraController = null;
+                  if (mounted) {
+                    context.pushReplacement(
+                      '/camera',
+                      extra: widget.destination,
+                    );
+                  }
+                },
                 mapControlsRightOffset: 0,
               ),
 
@@ -412,6 +501,64 @@ class _NavigationMapViewState extends State<_NavigationMapView>
                   child: const Icon(Icons.height),
                 ),
               ),
+
+              // ── Camera Preview Overlay (PiP) ──────────────────────────────
+              if (_isCameraReady)
+                Positioned(
+                  right: 16,
+                  top: 16,
+                  child: GestureDetector(
+                    onTap: _captureAndRelocalize,
+                    child: Container(
+                      width: 120,
+                      height: 160,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.zero,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CameraPreview(_cameraController!),
+                          if (_isCapturing)
+                            Container(
+                              color: Colors.black45,
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            ),
+                          Align(
+                            alignment: Alignment.bottomCenter,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              color: Colors.black54,
+                              child: const Text(
+                                'TAP TO LOCATE',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

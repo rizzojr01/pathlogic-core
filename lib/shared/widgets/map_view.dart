@@ -17,6 +17,7 @@ import 'map_markers.dart';
 import '../../injection.dart';
 import '../services/map_download_service.dart';
 import 'map_search_overlay.dart';
+import '../services/location_config_service.dart';
 
 class MapView extends StatefulWidget {
   final dynamic userLocation;
@@ -338,9 +339,8 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
       );
     }
 
-    _manualRotation = -(
-      (userAngleDeg + initialDelta) * (math.pi / 180.0) + (math.pi / 2)
-    );
+    _manualRotation =
+        -((userAngleDeg + initialDelta) * (math.pi / 180.0) + (math.pi / 2));
     _initialRouteRotation = -(userAngleDeg * (math.pi / 180.0) + (math.pi / 2));
     _targetRotation = _manualRotation;
 
@@ -781,83 +781,93 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
             ),
 
             // Debug Info Panel (Same as stable/ar_intrigration)
-            Positioned(
-              left: 16,
-              top: 100,
-              child: IgnorePointer(
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(8),
+            ValueListenableBuilder<bool>(
+              valueListenable:
+                  getIt<LocationConfigService>().debugBannerNotifier,
+              builder: (context, showDebug, _) {
+                if (!showDebug) return const SizedBox.shrink();
+
+                return Positioned(
+                  left: 16,
+                  top: 100,
+                  child: IgnorePointer(
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'DEBUG INFO',
+                            style: TextStyle(
+                              color: Colors.amber,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'API Ang: ${((widget.route?.steps.isNotEmpty ?? false) ? widget.route!.steps.first.from.ang : null)?.toStringAsFixed(1) ?? "N/A"}°',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                            ),
+                          ),
+                          Text(
+                            'Ref Head: ${widget.capturedReferenceHeading?.toStringAsFixed(1) ?? "N/A"}°',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                            ),
+                          ),
+                          Text(
+                            'Plot Head: ${widget.headingAtStart?.toStringAsFixed(1) ?? "N/A"}°',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                            ),
+                          ),
+                          Text(
+                            'Delta: ${(() {
+                              if (widget.headingAtStart == null || widget.capturedReferenceHeading == null) {
+                                return "N/A";
+                              }
+                              double d = widget.headingAtStart! - widget.capturedReferenceHeading!;
+                              if (d > 180) d -= 360;
+                              if (d < -180) d += 360;
+                              return d.toStringAsFixed(1);
+                            })()}°',
+                            style: const TextStyle(
+                              color: Colors.cyanAccent,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'Map Rot: ${(_manualRotation * 180 / math.pi).toStringAsFixed(1)}°',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                            ),
+                          ),
+                          Text(
+                            'Cur Compass: ${_smoothedHeading.toStringAsFixed(1)}°',
+                            style: const TextStyle(
+                              color: Colors.greenAccent,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'DEBUG INFO',
-                        style: TextStyle(
-                          color: Colors.amber,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'API Ang: ${((widget.route?.steps.isNotEmpty ?? false) ? widget.route!.steps.first.from.ang : null)?.toStringAsFixed(1) ?? "N/A"}°',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                        ),
-                      ),
-                      Text(
-                        'Ref Head: ${widget.capturedReferenceHeading?.toStringAsFixed(1) ?? "N/A"}°',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                        ),
-                      ),
-                      Text(
-                        'Plot Head: ${widget.headingAtStart?.toStringAsFixed(1) ?? "N/A"}°',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                        ),
-                      ),
-                      Text(
-                        'Delta: ${(() {
-                          if (widget.headingAtStart == null || widget.capturedReferenceHeading == null) return "N/A";
-                          double d = widget.headingAtStart! - widget.capturedReferenceHeading!;
-                          if (d > 180) d -= 360;
-                          if (d < -180) d += 360;
-                          return d.toStringAsFixed(1);
-                        })()}°',
-                        style: const TextStyle(
-                          color: Colors.cyanAccent,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        'Map Rot: ${(_manualRotation * 180 / math.pi).toStringAsFixed(1)}°',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                        ),
-                      ),
-                      Text(
-                        'Cur Compass: ${_smoothedHeading.toStringAsFixed(1)}°',
-                        style: const TextStyle(
-                          color: Colors.greenAccent,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+                );
+              },
             ),
 
             // Markers Layer
@@ -935,7 +945,9 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
               onSnapRotation: () {
                 _snapToInitialRotation();
                 // Re-start compass seeded from the capture-time heading
-                _startCompassTracking(seedHeading: widget.capturedReferenceHeading);
+                _startCompassTracking(
+                  seedHeading: widget.capturedReferenceHeading,
+                );
               },
               isAtInitialRotation:
                   (_manualRotation - _initialRouteRotation).abs() < 0.01,
