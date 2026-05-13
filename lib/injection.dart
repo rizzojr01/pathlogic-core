@@ -72,6 +72,8 @@ import 'package:smart_sense/features/auth/domain/repositories/auth_repository.da
 import 'package:smart_sense/features/auth/domain/usecases/login_usecase.dart';
 import 'package:smart_sense/features/auth/domain/usecases/signup_usecase.dart';
 import 'package:smart_sense/features/auth/domain/usecases/logout_usecase.dart';
+import 'package:smart_sense/features/auth/domain/usecases/forgot_password_usecase.dart';
+import 'package:smart_sense/features/auth/domain/usecases/reset_password_usecase.dart';
 import 'package:smart_sense/features/auth/presentation/bloc/auth_bloc.dart';
 
 // Profile
@@ -151,6 +153,8 @@ Future<void> initializeDependencies() async {
   getIt.registerLazySingleton(() => LoginUseCase(getIt()));
   getIt.registerLazySingleton(() => SignupUseCase(getIt()));
   getIt.registerLazySingleton(() => LogoutUseCase(getIt()));
+  getIt.registerLazySingleton(() => ForgotPasswordUseCase(getIt()));
+  getIt.registerLazySingleton(() => ResetPasswordUseCase(getIt()));
 
   // Profile Feature
   getIt.registerLazySingleton<ProfileRemoteDataSource>(
@@ -170,6 +174,8 @@ Future<void> initializeDependencies() async {
       signupUseCase: getIt(),
       getMeUseCase: getIt(),
       logoutUseCase: getIt(),
+      forgotPasswordUseCase: getIt(),
+      resetPasswordUseCase: getIt(),
     ),
   );
 

@@ -36,3 +36,22 @@ class AuthCheckRequested extends AuthEvent {
   @override
   List<Object?> get props => [];
 }
+
+class ForgotPasswordSubmitted extends AuthEvent {
+  final String email;
+
+  ForgotPasswordSubmitted({required this.email});
+
+  @override
+  List<Object?> get props => [email];
+}
+
+class ResetPasswordSubmitted extends AuthEvent {
+  final String token;
+  final String newPassword;
+
+  ResetPasswordSubmitted({required this.token, required this.newPassword});
+
+  @override
+  List<Object?> get props => [token, newPassword];
+}

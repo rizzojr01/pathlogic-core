@@ -4,6 +4,8 @@ import 'package:smart_sense/features/profile/domain/usecases/get_me_usecase.dart
 import 'package:smart_sense/features/auth/domain/usecases/login_usecase.dart';
 import 'package:smart_sense/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:smart_sense/features/auth/domain/usecases/signup_usecase.dart';
+import 'package:smart_sense/features/auth/domain/usecases/forgot_password_usecase.dart';
+import 'package:smart_sense/features/auth/domain/usecases/reset_password_usecase.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
@@ -12,17 +14,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final SignupUseCase signupUseCase;
   final GetMeUseCase getMeUseCase;
   final LogoutUseCase logoutUseCase;
+  final ForgotPasswordUseCase forgotPasswordUseCase;
+  final ResetPasswordUseCase resetPasswordUseCase;
 
   AuthBloc({
     required this.loginUseCase,
     required this.signupUseCase,
     required this.getMeUseCase,
     required this.logoutUseCase,
+    required this.forgotPasswordUseCase,
+    required this.resetPasswordUseCase,
   }) : super(AuthInitial()) {
     on<LoginSubmitted>(_onLoginSubmitted);
     on<SignupSubmitted>(_onSignupSubmitted);
     on<AuthLogoutRequested>(_onLogoutRequested);
     on<AuthCheckRequested>(_onAuthCheckRequested);
+    on<ForgotPasswordSubmitted>(_onForgotPasswordSubmitted);
+    on<ResetPasswordSubmitted>(_onResetPasswordSubmitted);
   }
 
   Future<void> _onLoginSubmitted(
@@ -78,6 +86,37 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     result.fold(
       (failure) => emit(Unauthenticated()),
       (user) => emit(Authenticated(user: user)),
+    );
+  }
+
+  Future<void> _onForgotPasswordSubmitted(
+    ForgotPasswordSubmitted event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthActionLoading());
+    final result = await forgotPasswordUseCase(
+      ForgotPasswordParams(email: event.email),
+    );
+    result.fold(
+      (failure) => emit(AuthFailure(message: failure.message)),
+      (_) => emit(ForgotPasswordSuccess()),
+    );
+  }
+
+  Future<void> _onResetPasswordSubmitted(
+    ResetPasswordSubmitted event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthActionLoading());
+    final result = await resetPasswordUseCase(
+      ResetPasswordParams(
+        token: event.token,
+        newPassword: event.newPassword,
+      ),
+    );
+    result.fold(
+      (failure) => emit(AuthFailure(message: failure.message)),
+      (_) => emit(ResetPasswordSuccess()),
     );
   }
 }

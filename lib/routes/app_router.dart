@@ -5,6 +5,8 @@ import '../features/splash/presentation/pages/splash_page.dart';
 import '../features/onboarding/presentation/pages/onboarding_page.dart';
 import '../features/auth/presentation/pages/login_page.dart';
 import '../features/auth/presentation/pages/signup_page.dart';
+import '../features/auth/presentation/pages/forgot_password_page.dart';
+import '../features/auth/presentation/pages/reset_password_page.dart';
 import '../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../features/camera/presentation/pages/camera_page.dart';
 import '../features/location/presentation/pages/location_detection_page.dart';
@@ -28,6 +30,8 @@ class AppRouter {
   static const String onboarding = '/onboarding';
   static const String login = '/login';
   static const String signup = '/signup';
+  static const String forgotPassword = '/forgot-password';
+  static const String resetPassword = '/reset-password';
   static const String dashboard = '/dashboard';
   static const String camera = '/camera';
   static const String locationDetection = '/location-detection';
@@ -49,6 +53,14 @@ class AppRouter {
       ),
       GoRoute(path: login, builder: (context, state) => const LoginPage()),
       GoRoute(path: signup, builder: (context, state) => const SignupPage()),
+      GoRoute(
+        path: forgotPassword,
+        builder: (context, state) => const ForgotPasswordPage(),
+      ),
+      GoRoute(
+        path: resetPassword,
+        builder: (context, state) => const ResetPasswordPage(),
+      ),
       GoRoute(
         path: dashboard,
         builder: (context, state) => const DashboardPage(),
