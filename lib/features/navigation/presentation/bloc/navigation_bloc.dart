@@ -39,6 +39,17 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     required this.deviceIdService,
   }) : super(const NavigationInitial()) {
     on<InitializeNavigationEvent>(_onInitializeNavigation);
+    on<RefreshHeadingAtStartEvent>(_onRefreshHeadingAtStart);
+  }
+
+  void _onRefreshHeadingAtStart(
+    RefreshHeadingAtStartEvent event,
+    Emitter<NavigationState> emit,
+  ) {
+    final current = state;
+    if (current is NavigationReady) {
+      emit(current.copyWith(headingAtStart: event.heading));
+    }
   }
 
   Future<void> _onInitializeNavigation(

@@ -10,6 +10,7 @@ import '../features/camera/presentation/pages/camera_page.dart';
 import '../features/location/presentation/pages/location_detection_page.dart';
 import '../features/destination/presentation/pages/destination_page.dart';
 import '../features/navigation/presentation/pages/navigation_page.dart';
+import '../features/navigation/presentation/pages/route_overview_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/destination/domain/entities/destination_entity.dart';
 import '../features/camera/presentation/bloc/camera_bloc.dart';
@@ -35,6 +36,7 @@ class AppRouter {
   static const String locationDetection = '/location-detection';
   static const String destination = '/destination';
   static const String navigation = '/navigation';
+  static const String routeOverview = '/route-overview';
   static const String profile = '/profile';
   static const String locateMe = '/locate-me';
   static const String localizationHistory = '/localization-history';
@@ -103,7 +105,7 @@ class AppRouter {
         builder: (context, state) => const FloorMapPage(),
       ),
       GoRoute(
-        path: navigation,
+        path: routeOverview,
         builder: (context, state) {
           final extra = state.extra;
           DestinationEntity? destination;
@@ -131,13 +133,64 @@ class AppRouter {
           }
           return BlocProvider(
             create: (context) => getIt<NavigationBloc>(),
-            child: NavigationPage(
+            child: RouteOverviewPage(
               destination: destination,
               imagePath: imagePath,
               userPickedCoordinates: userPickedCoordinates,
               pickedFloor: pickedFloor,
               heading: heading,
             ),
+          );
+        },
+      ),
+      GoRoute(
+        path: navigation,
+        builder: (context, state) {
+          final extra = state.extra;
+          DestinationEntity? destination;
+          String? imagePath;
+          Map<String, dynamic>? userPickedCoordinates;
+          String? pickedFloor;
+          double? heading;
+          NavigationBloc? existingBloc;
+
+          double? freshHeadingAtStart;
+          if (extra is Map<String, dynamic>) {
+            destination = extra['destination'] as DestinationEntity?;
+            imagePath = extra['imagePath'] as String?;
+            userPickedCoordinates =
+                extra['manualCoordinates'] as Map<String, dynamic>?;
+            pickedFloor = extra['pickedFloor'] as String?;
+            heading = extra['heading'] as double?;
+            existingBloc = extra['existingBloc'] as NavigationBloc?;
+            freshHeadingAtStart = extra['freshHeadingAtStart'] as double?;
+          } else if (extra is DestinationEntity) {
+            destination = extra;
+          }
+
+          if (destination == null) {
+            return Scaffold(
+              appBar: AppBar(title: const Text('Error')),
+              body: const Center(child: Text('Destination is required')),
+            );
+          }
+
+          final page = NavigationPage(
+            destination: destination,
+            imagePath: imagePath,
+            userPickedCoordinates: userPickedCoordinates,
+            pickedFloor: pickedFloor,
+            heading: heading,
+            skipInitialization: existingBloc != null,
+            freshHeadingAtStart: freshHeadingAtStart,
+          );
+
+          if (existingBloc != null) {
+            return BlocProvider.value(value: existingBloc, child: page);
+          }
+          return BlocProvider(
+            create: (_) => getIt<NavigationBloc>(),
+            child: page,
           );
         },
       ),

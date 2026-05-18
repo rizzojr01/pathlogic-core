@@ -85,7 +85,7 @@ class _CameraPageState extends State<CameraPage>
       // Automatically proceed to navigation for clear images
       WidgetsBinding.instance.addPostFrameCallback((_) {
         context.pushReplacement(
-          '/navigation',
+          '/route-overview',
           extra: {
             'destination': widget.destination,
             'imagePath': state.photo.filePath,
@@ -182,7 +182,7 @@ class _CameraReadyView extends StatelessWidget {
             },
             onLocationSelected: (x, y, floor) {
               context.pushReplacement(
-                '/navigation',
+                '/route-overview',
                 extra: {
                   'destination': destination,
                   'manualCoordinates': {

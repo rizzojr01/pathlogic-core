@@ -32,6 +32,8 @@ class NavigationPage extends StatefulWidget {
   final Map<String, dynamic>? userPickedCoordinates;
   final String? pickedFloor;
   final double? heading;
+  final bool skipInitialization;
+  final double? freshHeadingAtStart;
 
   const NavigationPage({
     super.key,
@@ -40,6 +42,8 @@ class NavigationPage extends StatefulWidget {
     this.userPickedCoordinates,
     this.pickedFloor,
     this.heading,
+    this.skipInitialization = false,
+    this.freshHeadingAtStart,
   });
 
   @override
@@ -50,15 +54,22 @@ class _NavigationPageState extends State<NavigationPage> {
   @override
   void initState() {
     super.initState();
-    context.read<NavigationBloc>().add(
-      InitializeNavigationEvent(
-        widget.destination,
-        imagePath: widget.imagePath,
-        userPickedCoordinates: widget.userPickedCoordinates,
-        pickedFloor: widget.pickedFloor,
-        heading: widget.heading,
-      ),
-    );
+    if (!widget.skipInitialization) {
+      context.read<NavigationBloc>().add(
+        InitializeNavigationEvent(
+          widget.destination,
+          imagePath: widget.imagePath,
+          userPickedCoordinates: widget.userPickedCoordinates,
+          pickedFloor: widget.pickedFloor,
+          heading: widget.heading,
+        ),
+      );
+    } else if (widget.freshHeadingAtStart != null) {
+      // Heading captured at "Start Navigation" tap — update state without re-fetching.
+      context.read<NavigationBloc>().add(
+        RefreshHeadingAtStartEvent(widget.freshHeadingAtStart!),
+      );
+    }
   }
 
 

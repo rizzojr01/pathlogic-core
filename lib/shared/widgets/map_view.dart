@@ -33,6 +33,7 @@ class MapView extends StatefulWidget {
   final double mapControlsRightOffset;
   final double? headingAtStart;
   final double? capturedReferenceHeading;
+  final bool showControls;
 
   const MapView({
     super.key,
@@ -49,6 +50,7 @@ class MapView extends StatefulWidget {
     this.headingAtStart,
     this.capturedReferenceHeading,
     this.mapControlsRightOffset = 0,
+    this.showControls = true,
   });
 
   @override
@@ -311,7 +313,7 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
                   info.image.width.toDouble(),
                   info.image.height.toDouble(),
                 );
-                _setInitialRouteRotation();
+                if (widget.autoCenterOnUser) _setInitialRouteRotation();
               });
             }
           }),
@@ -452,7 +454,8 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
         oldWidget.route!.entityId != widget.route!.entityId;
 
     if ((routeStateChanged || routeIdentityChanged || headingChanged) &&
-        _imageSize != null) {
+        _imageSize != null &&
+        widget.autoCenterOnUser) {
       _hasSetInitialRotation = false;
       _setInitialRouteRotation();
       // Recenter after rotation is applied
@@ -935,59 +938,59 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
               },
             ),
 
-            MapControls(
-              right: 16 + widget.mapControlsRightOffset,
-              onSearch: () => setState(() => _isSearching = true),
-              onReset: () {
-                _hasRecenteredOnUser = false;
-                _recenterOnUser(containerSize, _imageSize!);
-              },
-              onSnapRotation: () {
-                _snapToInitialRotation();
-                // Re-start compass seeded from the capture-time heading
-                _startCompassTracking(
-                  seedHeading: widget.capturedReferenceHeading,
-                );
-              },
-              isAtInitialRotation:
-                  (_manualRotation - _initialRouteRotation).abs() < 0.01,
-              onRelocalize: widget.onRelocalize,
-            ),
-
-            // Compass active indicator removed as per requirements - rotation is always on
-            if (_showLegend)
-              Positioned(
-                left: 16,
-                bottom: 16,
-                child: _MapLegend(
-                  onHide: () => setState(() => _showLegend = false),
-                ),
+            if (widget.showControls) ...[
+              MapControls(
+                right: 16 + widget.mapControlsRightOffset,
+                onSearch: () => setState(() => _isSearching = true),
+                onReset: () {
+                  _hasRecenteredOnUser = false;
+                  _recenterOnUser(containerSize, _imageSize!);
+                },
+                onSnapRotation: () {
+                  _snapToInitialRotation();
+                  _startCompassTracking(
+                    seedHeading: widget.capturedReferenceHeading,
+                  );
+                },
+                isAtInitialRotation:
+                    (_manualRotation - _initialRouteRotation).abs() < 0.01,
+                onRelocalize: widget.onRelocalize,
               ),
 
-            if (!_showLegend)
-              Positioned(
-                left: 16,
-                bottom: 16,
-                child: FloatingActionButton.small(
-                  onPressed: () => setState(() => _showLegend = true),
-                  backgroundColor: theme.colorScheme.surface,
-                  child: Icon(
-                    Icons.info_outline,
-                    color: theme.colorScheme.primary,
+              if (_showLegend)
+                Positioned(
+                  left: 16,
+                  bottom: 16,
+                  child: _MapLegend(
+                    onHide: () => setState(() => _showLegend = false),
                   ),
                 ),
-              ),
 
-            if (_isSearching)
-              MapSearchOverlay(
-                controller: _searchController,
-                filteredDestinations: _filteredDestinations,
-                onClose: () => setState(() => _isSearching = false),
-                onDestinationTap: (d) {
-                  setState(() => _isSearching = false);
-                  widget.onDestinationTap?.call(d);
-                },
-              ),
+              if (!_showLegend)
+                Positioned(
+                  left: 16,
+                  bottom: 16,
+                  child: FloatingActionButton.small(
+                    onPressed: () => setState(() => _showLegend = true),
+                    backgroundColor: theme.colorScheme.surface,
+                    child: Icon(
+                      Icons.info_outline,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+
+              if (_isSearching)
+                MapSearchOverlay(
+                  controller: _searchController,
+                  filteredDestinations: _filteredDestinations,
+                  onClose: () => setState(() => _isSearching = false),
+                  onDestinationTap: (d) {
+                    setState(() => _isSearching = false);
+                    widget.onDestinationTap?.call(d);
+                  },
+                ),
+            ],
 
             // ── Map Sync Status Indicator ──────────────────────────────────
             ValueListenableBuilder<MapSyncStatus>(

@@ -8,6 +8,17 @@ abstract class NavigationEvent extends Equatable {
   List<Object?> get props => [];
 }
 
+/// Re-emits the current NavigationReady state with a fresh headingAtStart.
+/// Used when navigating from the overview page so the heading is captured
+/// at "Start Navigation" tap time, not during overview initialization.
+class RefreshHeadingAtStartEvent extends NavigationEvent {
+  final double heading;
+  const RefreshHeadingAtStartEvent(this.heading);
+
+  @override
+  List<Object?> get props => [heading];
+}
+
 class InitializeNavigationEvent extends NavigationEvent {
   final DestinationEntity destination;
   final String? imagePath;
