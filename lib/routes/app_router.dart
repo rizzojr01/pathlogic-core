@@ -145,7 +145,7 @@ class AppRouter {
       ),
       GoRoute(
         path: navigation,
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final extra = state.extra;
           DestinationEntity? destination;
           String? imagePath;
@@ -153,8 +153,8 @@ class AppRouter {
           String? pickedFloor;
           double? heading;
           NavigationBloc? existingBloc;
-
           double? freshHeadingAtStart;
+
           if (extra is Map<String, dynamic>) {
             destination = extra['destination'] as DestinationEntity?;
             imagePath = extra['imagePath'] as String?;
@@ -168,29 +168,46 @@ class AppRouter {
             destination = extra;
           }
 
+          Widget child;
           if (destination == null) {
-            return Scaffold(
+            child = Scaffold(
               appBar: AppBar(title: const Text('Error')),
               body: const Center(child: Text('Destination is required')),
             );
+          } else {
+            final page = NavigationPage(
+              destination: destination,
+              imagePath: imagePath,
+              userPickedCoordinates: userPickedCoordinates,
+              pickedFloor: pickedFloor,
+              heading: heading,
+              skipInitialization: existingBloc != null,
+              freshHeadingAtStart: freshHeadingAtStart,
+            );
+            child = existingBloc != null
+                ? BlocProvider.value(value: existingBloc, child: page)
+                : BlocProvider(
+                    create: (_) => getIt<NavigationBloc>(),
+                    child: page,
+                  );
           }
 
-          final page = NavigationPage(
-            destination: destination,
-            imagePath: imagePath,
-            userPickedCoordinates: userPickedCoordinates,
-            pickedFloor: pickedFloor,
-            heading: heading,
-            skipInitialization: existingBloc != null,
-            freshHeadingAtStart: freshHeadingAtStart,
-          );
-
-          if (existingBloc != null) {
-            return BlocProvider.value(value: existingBloc, child: page);
-          }
-          return BlocProvider(
-            create: (_) => getIt<NavigationBloc>(),
-            child: page,
+          // Smooth fade-in transition — the zoom effect comes from the overview
+          // page's MapView animation that runs just before this page appears.
+          return CustomTransitionPage(
+            key: state.pageKey,
+            child: child,
+            transitionDuration: const Duration(milliseconds: 450),
+            reverseTransitionDuration: const Duration(milliseconds: 300),
+            transitionsBuilder: (context, animation, _, child) {
+              return FadeTransition(
+                opacity: CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOut,
+                ),
+                child: child,
+              );
+            },
           );
         },
       ),

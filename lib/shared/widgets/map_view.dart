@@ -34,6 +34,7 @@ class MapView extends StatefulWidget {
   final double? headingAtStart;
   final double? capturedReferenceHeading;
   final bool showControls;
+  final TransformationController? externalTransformController;
 
   const MapView({
     super.key,
@@ -51,6 +52,7 @@ class MapView extends StatefulWidget {
     this.capturedReferenceHeading,
     this.mapControlsRightOffset = 0,
     this.showControls = true,
+    this.externalTransformController,
   });
 
   @override
@@ -59,8 +61,9 @@ class MapView extends StatefulWidget {
 
 class _MapViewState extends State<MapView> with TickerProviderStateMixin {
   late AnimationController _routeAnimationController;
-  final TransformationController _transformationController =
-      TransformationController();
+  // Uses external controller if provided (caller owns it); otherwise creates its own.
+  late TransformationController _transformationController;
+  bool _ownsTransformController = false;
 
   late AnimationController _snapRotationController;
   Animation<double>? _snapRotationAnimation;
@@ -104,6 +107,13 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    if (widget.externalTransformController != null) {
+      _transformationController = widget.externalTransformController!;
+    } else {
+      _transformationController = TransformationController();
+      _ownsTransformController = true;
+    }
+
     _routeAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 10),
@@ -476,7 +486,7 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
     _rotationTicker.dispose();
     _routeAnimationController.dispose();
     _snapRotationController.dispose();
-    _transformationController.dispose();
+    if (_ownsTransformController) _transformationController.dispose();
     _searchController.dispose();
     super.dispose();
   }
