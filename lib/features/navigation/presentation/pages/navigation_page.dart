@@ -425,6 +425,8 @@ class _NavigationMapViewState extends State<_NavigationMapView>
           currentStep: 3,
           title: 'Direct Guidance',
           onBack: () async {
+            // Mark not-ready BEFORE the async gap so no rebuild touches _cameraController!
+            if (mounted) setState(() => _isCameraReady = false);
             await _cameraController?.dispose();
             _cameraController = null;
             if (mounted) {
@@ -464,6 +466,7 @@ class _NavigationMapViewState extends State<_NavigationMapView>
                   ),
                 ),
                 onRelocalize: () async {
+                  if (mounted) setState(() => _isCameraReady = false);
                   await _cameraController?.dispose();
                   _cameraController = null;
                   if (mounted) {
@@ -514,7 +517,7 @@ class _NavigationMapViewState extends State<_NavigationMapView>
               ),
 
               // ── Camera Preview Overlay (PiP) ──────────────────────────────
-              if (_isCameraReady)
+              if (_isCameraReady && _cameraController != null)
                 Positioned(
                   right: 16,
                   top: 16,
