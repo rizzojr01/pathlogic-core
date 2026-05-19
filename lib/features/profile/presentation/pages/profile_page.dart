@@ -45,7 +45,7 @@ class ProfilePage extends StatelessWidget {
                           icon: Icons.person_outline_rounded,
                           title: 'Personal Information',
                           subtitle: 'Name, Email, Phone',
-                          onTap: () {},
+                          onTap: () => context.push('/personal-information'),
                         ),
                         _SettingsItem(
                           icon: Icons.history_rounded,

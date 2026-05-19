@@ -73,6 +73,7 @@ import 'package:smart_sense/features/auth/domain/usecases/login_usecase.dart';
 import 'package:smart_sense/features/auth/domain/usecases/signup_usecase.dart';
 import 'package:smart_sense/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:smart_sense/features/auth/domain/usecases/forgot_password_usecase.dart';
+import 'package:smart_sense/features/auth/domain/usecases/verify_reset_token_usecase.dart';
 import 'package:smart_sense/features/auth/domain/usecases/reset_password_usecase.dart';
 import 'package:smart_sense/features/auth/presentation/bloc/auth_bloc.dart';
 
@@ -81,6 +82,7 @@ import 'package:smart_sense/features/profile/data/datasources/profile_remote_dat
 import 'package:smart_sense/features/profile/data/repositories/profile_repository_impl.dart';
 import 'package:smart_sense/features/profile/domain/repositories/profile_repository.dart';
 import 'package:smart_sense/features/profile/domain/usecases/get_me_usecase.dart';
+import 'package:smart_sense/features/profile/domain/usecases/update_profile_usecase.dart';
 
 final getIt = GetIt.instance;
 
@@ -154,6 +156,7 @@ Future<void> initializeDependencies() async {
   getIt.registerLazySingleton(() => SignupUseCase(getIt()));
   getIt.registerLazySingleton(() => LogoutUseCase(getIt()));
   getIt.registerLazySingleton(() => ForgotPasswordUseCase(getIt()));
+  getIt.registerLazySingleton(() => VerifyResetTokenUseCase(getIt()));
   getIt.registerLazySingleton(() => ResetPasswordUseCase(getIt()));
 
   // Profile Feature
@@ -167,6 +170,7 @@ Future<void> initializeDependencies() async {
     ),
   );
   getIt.registerLazySingleton(() => GetMeUseCase(getIt()));
+  getIt.registerLazySingleton(() => UpdateProfileUseCase(getIt()));
 
   getIt.registerFactory(
     () => AuthBloc(
@@ -175,7 +179,9 @@ Future<void> initializeDependencies() async {
       getMeUseCase: getIt(),
       logoutUseCase: getIt(),
       forgotPasswordUseCase: getIt(),
+      verifyResetTokenUseCase: getIt(),
       resetPasswordUseCase: getIt(),
+      updateProfileUseCase: getIt(),
     ),
   );
 

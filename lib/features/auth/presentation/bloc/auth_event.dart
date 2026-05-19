@@ -46,12 +46,33 @@ class ForgotPasswordSubmitted extends AuthEvent {
   List<Object?> get props => [email];
 }
 
+class VerifyResetTokenSubmitted extends AuthEvent {
+  final String email;
+  final String token;
+
+  VerifyResetTokenSubmitted({required this.email, required this.token});
+
+  @override
+  List<Object?> get props => [email, token];
+}
+
 class ResetPasswordSubmitted extends AuthEvent {
+  final String email;
   final String token;
   final String newPassword;
 
-  ResetPasswordSubmitted({required this.token, required this.newPassword});
+  ResetPasswordSubmitted({required this.email, required this.token, required this.newPassword});
 
   @override
-  List<Object?> get props => [token, newPassword];
+  List<Object?> get props => [email, token, newPassword];
+}
+
+class AuthUpdateProfileSubmitted extends AuthEvent {
+  final String? nickname;
+  final String? phone;
+
+  AuthUpdateProfileSubmitted({this.nickname, this.phone});
+
+  @override
+  List<Object?> get props => [nickname, phone];
 }

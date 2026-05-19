@@ -13,6 +13,7 @@ import '../features/location/presentation/pages/location_detection_page.dart';
 import '../features/destination/presentation/pages/destination_page.dart';
 import '../features/navigation/presentation/pages/navigation_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
+import '../features/profile/presentation/pages/personal_information_page.dart';
 import '../features/destination/domain/entities/destination_entity.dart';
 import '../features/camera/presentation/bloc/camera_bloc.dart';
 import '../features/destination/presentation/bloc/destination_bloc.dart';
@@ -42,6 +43,7 @@ class AppRouter {
   static const String localizationHistory = '/localization-history';
   static const String locateMeFloorPlan = '/locate-me/floor-plan';
   static const String floorMap = '/floor-map';
+  static const String personalInformation = '/personal-information';
 
   static final GoRouter router = GoRouter(
     initialLocation: splash,
@@ -59,7 +61,10 @@ class AppRouter {
       ),
       GoRoute(
         path: resetPassword,
-        builder: (context, state) => const ResetPasswordPage(),
+        builder: (context, state) {
+          final email = state.extra as String? ?? '';
+          return ResetPasswordPage(email: email);
+        },
       ),
       GoRoute(
         path: dashboard,
@@ -107,6 +112,10 @@ class AppRouter {
         },
       ),
       GoRoute(path: profile, builder: (context, state) => const ProfilePage()),
+      GoRoute(
+        path: personalInformation,
+        builder: (context, state) => const PersonalInformationPage(),
+      ),
       GoRoute(
         path: floorMap,
         builder: (context, state) => const FloorMapPage(),

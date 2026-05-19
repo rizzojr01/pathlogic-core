@@ -9,7 +9,9 @@ import 'package:smart_sense/shared/widgets/custom_button.dart';
 import 'package:smart_sense/shared/widgets/custom_text_field.dart';
 
 class ResetPasswordPage extends StatefulWidget {
-  const ResetPasswordPage({super.key});
+  final String email;
+
+  const ResetPasswordPage({super.key, required this.email});
 
   @override
   State<ResetPasswordPage> createState() => _ResetPasswordPageState();
@@ -22,6 +24,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isTokenVerified = false;
 
   @override
   void dispose() {
@@ -45,12 +48,22 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
   void _handleSubmit() {
     if (_formKey.currentState!.validate()) {
-      context.read<AuthBloc>().add(
-            ResetPasswordSubmitted(
-              token: _tokenController.text,
-              newPassword: _passwordController.text,
-            ),
-          );
+      if (!_isTokenVerified) {
+        context.read<AuthBloc>().add(
+              VerifyResetTokenSubmitted(
+                email: widget.email,
+                token: _tokenController.text,
+              ),
+            );
+      } else {
+        context.read<AuthBloc>().add(
+              ResetPasswordSubmitted(
+                email: widget.email,
+                token: _tokenController.text,
+                newPassword: _passwordController.text,
+              ),
+            );
+      }
     }
   }
 
@@ -60,7 +73,17 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
-        if (state is ResetPasswordSuccess) {
+        if (state is ResetTokenVerified) {
+          setState(() {
+            _isTokenVerified = true;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Token verified! Please enter your new password.'),
+              backgroundColor: theme.colorScheme.primary,
+            ),
+          );
+        } else if (state is ResetPasswordSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('Password reset successfully. Please login.'),
@@ -100,54 +123,58 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                     const SizedBox(height: 10),
                     _buildHeader(context),
                     const SizedBox(height: 32),
-                    CustomTextField(
-                      controller: _tokenController,
-                      labelText: 'Reset Token',
-                      hintText: 'Enter token from logs',
-                      prefixIcon: Icons.vpn_key_rounded,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return 'Required';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    CustomTextField(
-                      controller: _passwordController,
-                      labelText: 'New Password',
-                      hintText: '••••••••',
-                      prefixIcon: Icons.lock_outline_rounded,
-                      isPassword: true,
-                      obscureText: _obscurePassword,
-                      onSuffixIconTap: _togglePasswordVisibility,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return 'Required';
-                        if (value.length < 6) return 'Min 6 chars';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    CustomTextField(
-                      controller: _confirmPasswordController,
-                      labelText: 'Confirm Password',
-                      hintText: '••••••••',
-                      prefixIcon: Icons.lock_outline_rounded,
-                      isPassword: true,
-                      obscureText: _obscureConfirmPassword,
-                      onSuffixIconTap: _toggleConfirmPasswordVisibility,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return 'Required';
-                        if (value != _passwordController.text) {
-                          return 'Passwords do not match';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 32),
+                    if (!_isTokenVerified) ...[
+                      CustomTextField(
+                        controller: _tokenController,
+                        labelText: 'Reset Token',
+                        hintText: 'Enter 5-character token',
+                        prefixIcon: Icons.vpn_key_rounded,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Required';
+                          if (value.length != 5) return 'Must be 5 characters';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 32),
+                    ] else ...[
+                      CustomTextField(
+                        controller: _passwordController,
+                        labelText: 'New Password',
+                        hintText: '••••••••',
+                        prefixIcon: Icons.lock_outline_rounded,
+                        isPassword: true,
+                        obscureText: _obscurePassword,
+                        onSuffixIconTap: _togglePasswordVisibility,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Required';
+                          if (value.length < 6) return 'Min 6 chars';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      CustomTextField(
+                        controller: _confirmPasswordController,
+                        labelText: 'Confirm Password',
+                        hintText: '••••••••',
+                        prefixIcon: Icons.lock_outline_rounded,
+                        isPassword: true,
+                        obscureText: _obscureConfirmPassword,
+                        onSuffixIconTap: _toggleConfirmPasswordVisibility,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Required';
+                          if (value != _passwordController.text) {
+                            return 'Passwords do not match';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 32),
+                    ],
                     BlocBuilder<AuthBloc, AuthState>(
                       builder: (context, state) {
                         final isLoading = state is AuthActionLoading;
                         return CustomButton(
-                          text: 'Reset Password',
+                          text: _isTokenVerified ? 'Reset Password' : 'Verify Token',
                           onPressed: _handleSubmit,
                           isLoading: isLoading,
                         );
@@ -187,7 +214,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Enter the reset token and your new password.',
+          _isTokenVerified ? 'Enter your new password.' : 'Enter the 5-character token sent to your email.',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 15,

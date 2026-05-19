@@ -84,12 +84,30 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Either<Failure, void>> verifyResetToken({
+    required String email,
+    required String token,
+  }) async {
+    try {
+      await remoteDataSource.verifyResetToken(
+        email: email,
+        token: token,
+      );
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> resetPassword({
+    required String email,
     required String token,
     required String newPassword,
   }) async {
     try {
       await remoteDataSource.resetPassword(
+        email: email,
         token: token,
         newPassword: newPassword,
       );

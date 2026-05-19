@@ -48,7 +48,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             ),
           );
           // Navigate to reset password page so they can enter the token
-          context.push('/reset-password');
+          context.push('/reset-password', extra: _emailController.text);
         } else if (state is AuthFailure) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
