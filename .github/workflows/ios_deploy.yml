@@ -90,6 +90,11 @@ jobs:
           flutter pub get
           cd ios && bundle install && cd ..
 
+      - name: Setup SSH Key for Match
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.MATCH_SSH_PRIVATE_KEY }}
+
       - name: Update Xcode Project Configuration
         run: |
           BUNDLE_ID="${{ steps.config.outputs.bundle_id }}"
@@ -151,13 +156,20 @@ jobs:
               asc_team_id = options[:asc_team_id]
               release_notes = options[:release_notes]
               
-                  # Build the app with automatic code signing
+              # Sync code signing certificates from git repo (readonly)
+              match(
+                type: "appstore",
+                app_identifier: app_identifier,
+                team_id: team_id,
+                readonly: true
+              )
+              
+              # Build the app
               build_app(
                 workspace: "Runner.xcworkspace",
                 scheme: "Runner",
                 export_method: "app-store",
-                export_team_id: team_id,
-                xcargs: "-allowProvisioningUpdates AUTOMATIC_PROVISIONING=true DEVELOPMENT_TEAM=#{team_id} PROVISIONING_PROFILE_SPECIFIER=''"
+                export_team_id: team_id
               )
               
               # Upload to TestFlight
@@ -177,12 +189,18 @@ jobs:
               asc_team_id = options[:asc_team_id]
               release_notes = options[:release_notes]
               
+              match(
+                type: "appstore",
+                app_identifier: app_identifier,
+                team_id: team_id,
+                readonly: true
+              )
+              
               build_app(
                 workspace: "Runner.xcworkspace",
                 scheme: "Runner",
                 export_method: "app-store",
-                export_team_id: team_id,
-                xcargs: "-allowProvisioningUpdates AUTOMATIC_PROVISIONING=true DEVELOPMENT_TEAM=#{team_id} PROVISIONING_PROFILE_SPECIFIER=''"
+                export_team_id: team_id
               )
               
               upload_to_app_store(
@@ -198,6 +216,14 @@ jobs:
               )
             end
           end
+          EOF
+
+      - name: Create Matchfile
+        run: |
+          cat > ios/fastlane/Matchfile << 'EOF'
+          git_url("git@github.com:rizzojr01/ios-certificates.git")
+          storage_mode("git")
+          type("appstore")
           EOF
 
       - name: Create Appfile
@@ -216,6 +242,7 @@ jobs:
       - name: Deploy to TestFlight
         if: github.event.inputs.environment == 'testflight'
         env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           APP_STORE_CONNECT_API_KEY_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
           APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY }}
@@ -230,6 +257,7 @@ jobs:
       - name: Deploy to App Store
         if: github.event.inputs.environment == 'appstore'
         env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           APP_STORE_CONNECT_API_KEY_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
           APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY }}
