@@ -6,7 +6,7 @@ This document lists all the secrets required for the iOS CI/CD pipeline and wher
 
 ## 📋 Required Secrets Summary
 
-You need to add **7 secrets** to your GitHub repository:
+You need to add **4 secrets** to your GitHub repository:
 
 | # | Secret Name | Priority | Source |
 |---|-------------|----------|--------|
@@ -14,9 +14,6 @@ You need to add **7 secrets** to your GitHub repository:
 | 2 | `APP_STORE_CONNECT_API_KEY_KEY_ID` | Required | App Store Connect |
 | 3 | `APP_STORE_CONNECT_API_KEY_ISSUER_ID` | Required | App Store Connect |
 | 4 | `APP_STORE_CONNECT_API_KEY_KEY` | Required | App Store Connect |
-| 5 | `MATCH_SSH_PRIVATE_KEY` | Required | Generate locally |
-| 6 | `MATCH_PASSWORD` | Required | Create yourself |
-| 7 | `FASTLANE_PASSWORD` | Optional fallback | appleid.apple.com |
 
 ---
 
@@ -94,90 +91,12 @@ You need to add **7 secrets** to your GitHub repository:
 
 ---
 
-## 🔐 5. MATCH_SSH_PRIVATE_KEY
-
-**What it is:** SSH private key for accessing your code signing certificates repository
-
-**How to generate it:**
-
-```bash
-# Generate a new SSH key (run this on your local machine)
-ssh-keygen -t ed25519 -C "github-actions@your-org.com" -f match_deploy_key
-
-# This creates two files:
-# - match_deploy_key (private key - KEEP SECRET)
-# - match_deploy_key.pub (public key - can be shared)
-```
-
-**Add the public key to your certificates repository:**
-1. Create a new private GitHub repository (e.g., `your-org/ios-certificates`)
-2. Go to Settings → Deploy keys
-3. Click "Add deploy key"
-4. Title: `GitHub Actions Match`
-5. Key: Paste the content of `match_deploy_key.pub`
-6. Check "Allow write access"
-7. Click "Add key"
-
-**Add to GitHub Secrets:**
-- Name: `MATCH_SSH_PRIVATE_KEY`
-- Value: The entire content of `match_deploy_key` (private key file)
-
----
-
-## 🔐 6. MATCH_PASSWORD
-
-**What it is:** Password to encrypt/decrypt your code signing certificates
-
-**How to create it:**
-1. This is just a password you create yourself
-2. Make it strong and unique (e.g., a random 20+ character string)
-3. You'll use this same password when running `fastlane match` locally
-
-**Example:**
-```
-MyStr0ng!P@ssw0rd#2024
-```
-
-**Add to GitHub:**
-- Name: `MATCH_PASSWORD`
-- Value: The password you created
-
-**⚠️ Important:** Save this password in a password manager - you'll need it for local development too!
-
----
-
-## 🔐 7. FASTLANE_PASSWORD (Optional Fallback)
-
-**What it is:** App-specific password for Apple ID (NOT your regular password)
-
-**When to use:** Only if you're NOT using App Store Connect API Key method
-
-**How to get it:**
-1. Go to [appleid.apple.com](https://appleid.apple.com)
-2. Sign in with your Apple ID
-3. Scroll down to "App-Specific Passwords"
-4. Click "Generate an app-specific password"
-5. Label: `GitHub Actions CI/CD`
-6. Copy the generated password (looks like: `abcd-efgh-ijkl-mnop`)
-
-**Add to GitHub:**
-- Name: `FASTLANE_PASSWORD`
-- Value: The app-specific password
-
-**Note:** We recommend using the App Store Connect API Key method (secrets 2-4) instead of this, as it's more secure.
-
----
-
 ## 🚀 Quick Setup Checklist
 
 - [ ] Created App Store Connect API Key
 - [ ] Downloaded and saved the `.p8` file
 - [ ] Copied Key ID, Issuer ID, and private key content
-- [ ] Generated SSH key pair for match
-- [ ] Added public key to certificates repository
-- [ ] Created private certificates repository on GitHub
-- [ ] Created strong password for MATCH_PASSWORD
-- [ ] Added all 6 (or 7) secrets to GitHub repository
+- [ ] Added all 4 secrets to GitHub repository
 
 ---
 
@@ -194,37 +113,23 @@ MyStr0ng!P@ssw0rd#2024
 ## ⚠️ Security Notes
 
 1. **Never commit secrets** to your repository
-2. **Never share the private key** (`.p8` file or SSH private key)
-3. **Use a password manager** to store MATCH_PASSWORD
-4. **Rotate keys periodically** for security
-5. **The App Store Connect API Key can only be downloaded once** - save it immediately!
+2. **Never share the API private key** (`.p8` file)
+3. **Rotate keys periodically** for security
+4. **The App Store Connect API Key can only be downloaded once** - save it immediately!
 
 ---
 
 ## 🔧 Next Steps After Adding Secrets
 
-1. Initialize fastlane match locally:
-   ```bash
-   cd ios
-   bundle install
-   bundle exec fastlane match init
-   ```
+1. Verify all 4 secrets are added in GitHub Settings → Secrets → Actions
 
-2. Generate certificates for PlCore:
-   ```bash
-   bundle exec fastlane match appstore \
-     --app_identifier com.taggedweb.pathlogic \
-     --team_id M26N2KSNVL
-   ```
+2. Run the GitHub Action from the Actions tab:
+   - Select **iOS TestFlight Deployment**
+   - Choose the app (`plcore` or `plpro`)
+   - Choose environment (`testflight`)
+   - Click **Run workflow**
 
-3. Generate certificates for PlPro (when ready):
-   ```bash
-   bundle exec fastlane match appstore \
-     --app_identifier com.taggedweb.pathlogic-pro \
-     --team_id M26N2KSNVL
-   ```
-
-4. Run the GitHub Action from the Actions tab!
+The workflow will use Xcode's automatic provisioning with the App Store Connect API Key for code signing — no need for fastlane match or certificates repo.
 
 ---
 
@@ -234,10 +139,11 @@ MyStr0ng!P@ssw0rd#2024
 - Check that APP_STORE_CONNECT_API_KEY_KEY_ID is correct
 - Verify the API key hasn't expired or been revoked
 
-**"SSH authentication failed" error:**
-- Verify MATCH_SSH_PRIVATE_KEY is the full private key content
-- Check that the public key was added to the certificates repo
+**"Code signing" errors:**
+- Ensure the app exists in App Store Connect with the correct bundle ID
+- Verify that automatic provisioning is enabled for the App ID in App Store Connect
+- Make sure the API key has **App Manager** role or higher
 
-**"Certificate not found" error:**
-- Run fastlane match locally first to generate certificates
-- Ensure MATCH_PASSWORD is the same as what you used locally
+**"Provisioning profile" errors:**
+- Go to App Store Connect → Certificates, Identifiers & Profiles
+- Ensure the bundle ID `com.taggedweb.pathlogic` (or `com.taggedweb.pathlogic-pro`) is registered
