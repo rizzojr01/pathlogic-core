@@ -90,11 +90,6 @@ jobs:
           flutter pub get
           cd ios && bundle install && cd ..
 
-      - name: Setup SSH Key for Match
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.MATCH_SSH_PRIVATE_KEY }}
-
       - name: Update Xcode Project Configuration
         run: |
           BUNDLE_ID="${{ steps.config.outputs.bundle_id }}"
@@ -139,47 +134,6 @@ jobs:
           fi
           cd ..
 
-      - name: Create Export Options Plist
-        run: |
-          BUNDLE_ID="${{ steps.config.outputs.bundle_id }}"
-          TEAM_ID="${{ steps.config.outputs.team_id }}"
-          
-          cat > ios/ExportOptions.plist << EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>method</key>
-              <string>app-store</string>
-              <key>teamID</key>
-              <string>$TEAM_ID</string>
-              <key>uploadBitcode</key>
-              <false/>
-              <key>uploadSymbols</key>
-              <true/>
-              <key>stripSwiftSymbols</key>
-              <true/>
-              <key>provisioningProfiles</key>
-              <dict>
-                  <key>$BUNDLE_ID</key>
-                  <string>match AppStore $BUNDLE_ID</string>
-              </dict>
-              <key>signingStyle</key>
-              <string>manual</string>
-              <key>signingCertificate</key>
-              <string>iPhone Distribution</string>
-              <key>destination</key>
-              <string>export</string>
-              <key>compileBitcode</key>
-              <false/>
-              <key>thinning</key>
-              <string>&lt;none&gt;</string>
-          </dict>
-          </plist>
-          EOF
-          
-          echo "ExportOptions.plist created successfully"
-
       - name: Create Fastfile
         run: |
           BUNDLE_ID="${{ steps.config.outputs.bundle_id }}"
@@ -197,26 +151,13 @@ jobs:
               asc_team_id = options[:asc_team_id]
               release_notes = options[:release_notes]
               
-              # Setup match for code signing
-              match(
-                type: "appstore",
-                app_identifier: app_identifier,
-                team_id: team_id,
-                readonly: true
-              )
-              
-              # Build the app
+                  # Build the app with automatic code signing
               build_app(
                 workspace: "Runner.xcworkspace",
                 scheme: "Runner",
                 export_method: "app-store",
                 export_team_id: team_id,
-                export_options: {
-                  provisioningProfiles: {
-                    app_identifier => "match AppStore #{app_identifier}"
-                  }
-                },
-                xcargs: "-allowProvisioningUpdates"
+                xcargs: "-allowProvisioningUpdates AUTOMATIC_PROVISIONING=true DEVELOPMENT_TEAM=#{team_id} PROVISIONING_PROFILE_SPECIFIER=''"
               )
               
               # Upload to TestFlight
@@ -236,23 +177,12 @@ jobs:
               asc_team_id = options[:asc_team_id]
               release_notes = options[:release_notes]
               
-              match(
-                type: "appstore",
-                app_identifier: app_identifier,
-                team_id: team_id,
-                readonly: true
-              )
-              
               build_app(
                 workspace: "Runner.xcworkspace",
                 scheme: "Runner",
                 export_method: "app-store",
                 export_team_id: team_id,
-                export_options: {
-                  provisioningProfiles: {
-                    app_identifier => "match AppStore #{app_identifier}"
-                  }
-                }
+                xcargs: "-allowProvisioningUpdates AUTOMATIC_PROVISIONING=true DEVELOPMENT_TEAM=#{team_id} PROVISIONING_PROFILE_SPECIFIER=''"
               )
               
               upload_to_app_store(
@@ -268,17 +198,6 @@ jobs:
               )
             end
           end
-          EOF
-
-      - name: Create Matchfile
-        run: |
-          cat > ios/fastlane/Matchfile << 'EOF'
-          git_url("git@github.com:rizzojr01/ios-certificates.git")
-          storage_mode("git")
-          type("appstore")
-          
-          # For all available options run `fastlane match --help`
-          # Remove the # in front of the line to enable the option
           EOF
 
       - name: Create Appfile
@@ -297,8 +216,6 @@ jobs:
       - name: Deploy to TestFlight
         if: github.event.inputs.environment == 'testflight'
         env:
-          FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
-          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           APP_STORE_CONNECT_API_KEY_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
           APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY }}
@@ -313,8 +230,6 @@ jobs:
       - name: Deploy to App Store
         if: github.event.inputs.environment == 'appstore'
         env:
-          FASTLANE_PASSWORD: ${{ secrets.FASTLANE_PASSWORD }}
-          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           APP_STORE_CONNECT_API_KEY_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
           APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY }}
