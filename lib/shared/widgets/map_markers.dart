@@ -166,13 +166,14 @@ class DestinationFlagMarker extends StatelessWidget {
   }
 }
 
-/// Simple destination marker (circular with icon) for POIs on locate me map
+/// Circular POI marker. Pass [isSelected] to highlight the chosen destination.
 class DestinationMarker extends StatelessWidget {
   final double size;
   final Color? backgroundColor;
   final Color? iconColor;
   final IconData icon;
   final VoidCallback? onTap;
+  final Color? color; // overrides default POI color
 
   const DestinationMarker({
     super.key,
@@ -181,12 +182,22 @@ class DestinationMarker extends StatelessWidget {
     this.iconColor,
     this.icon = Icons.place,
     this.onTap,
+    this.color,
   });
+
+  static const Color _defaultPoiColor = Color(0xFF1E88E5);
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = backgroundColor ?? const Color(0xFFEA4335);
     final isGeneralIcon = icon == Icons.place;
+    final effectivePoiColor = color ?? backgroundColor ?? _defaultPoiColor;
+
+    if (isGeneralIcon) {
+      return GestureDetector(
+        onTap: onTap,
+        child: Icon(icon, color: effectivePoiColor, size: size),
+      );
+    }
 
     return GestureDetector(
       onTap: onTap,
@@ -194,25 +205,18 @@ class DestinationMarker extends StatelessWidget {
         width: size,
         height: size,
         alignment: Alignment.center,
-        decoration: isGeneralIcon
-            ? null
-            : BoxDecoration(
-                shape: BoxShape.circle,
-                color: bgColor,
-                boxShadow: [
-                  BoxShadow(
-                    color: bgColor.withOpacity(0.3),
-                    blurRadius: 4,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-        color: isGeneralIcon ? Colors.transparent : null,
-        child: Icon(
-          icon,
-          color: isGeneralIcon ? bgColor : Colors.white,
-          size: isGeneralIcon ? size : size * 0.6,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: effectivePoiColor,
+          boxShadow: [
+            BoxShadow(
+              color: effectivePoiColor.withValues(alpha: 0.3),
+              blurRadius: 4,
+              spreadRadius: 1,
+            ),
+          ],
         ),
+        child: Icon(icon, color: Colors.white, size: size * 0.6),
       ),
     );
   }

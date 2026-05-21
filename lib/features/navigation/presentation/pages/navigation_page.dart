@@ -506,7 +506,7 @@ class _NavigationMapViewState extends State<_NavigationMapView>
               // ── Offset Settings Button ────────────────────────────────────
               Positioned(
                 left: 16,
-                bottom: 80, // Positioned above the info button in MapView
+                bottom: 112,
                 child: FloatingActionButton.small(
                   onPressed: () => showOffsetSettingsModal(context),
                   backgroundColor: theme.colorScheme.surface,

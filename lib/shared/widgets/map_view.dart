@@ -78,6 +78,7 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
   bool _rotationThresholdMet = false; // only rotate after intentional twist
   static const double _rotationThreshold = 0.12; // ~7 degrees dead zone
   bool _showLegend = false;
+  DestinationEntity? _selectedDestination;
   Uint8List? _floorPlanBytes;
   Size? _imageSize;
   bool _hasImageError = false;
@@ -445,6 +446,7 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
         _initialMatrix = null;
         _hasInitializedView = false;
         _hasSetInitialRotation = false;
+        _selectedDestination = null;
       });
       _decodeFloorPlan();
     }
@@ -638,7 +640,6 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
         final centerOffsetY = (constraints.maxHeight - displayHeight) / 2;
 
         final userAngle = _getUserAngle();
-        // Manual hand rotation only
         final rotationAngle = _manualRotation;
 
         return Stack(
@@ -766,7 +767,10 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
                           // Route Layer
                           if (widget.route != null)
                             AnimatedBuilder(
-                              animation: _routeAnimationController,
+                              animation: Listenable.merge([
+                                _routeAnimationController,
+                                getIt<LocationConfigService>().routeColorNotifier,
+                              ]),
                               builder: (context, _) => CustomPaint(
                                 size: Size(displayWidth, displayHeight),
                                 painter: RoutePainter(
@@ -780,8 +784,8 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
                                       .toList(),
                                   scaleX: scaleX,
                                   scaleY: scaleY,
-                                  animationValue:
-                                      _routeAnimationController.value,
+                                  animationValue: _routeAnimationController.value,
+                                  routeColor: getIt<LocationConfigService>().routeColorNotifier.value,
                                 ),
                               ),
                             ),
@@ -885,10 +889,14 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
 
             // Markers Layer
             AnimatedBuilder(
-              animation: _transformationController,
+              animation: Listenable.merge([
+                _transformationController,
+                getIt<LocationConfigService>().poiColorNotifier,
+              ]),
               builder: (context, _) {
                 final matrix = _transformationController.value;
                 final zoomScale = matrix.getMaxScaleOnAxis();
+                final poiColor = getIt<LocationConfigService>().poiColorNotifier.value;
 
                 return Stack(
                   children: [
@@ -908,6 +916,7 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
                         isPOI: true,
                         name: d.name,
                         destination: d,
+                        poiColor: poiColor,
                       ),
                     ),
 
@@ -989,6 +998,18 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
                     ),
                   ),
                 ),
+
+              // Palette FAB — opens color picker sheet
+              Positioned(
+                left: 16,
+                bottom: 64,
+                child: FloatingActionButton.small(
+                  onPressed: () => _showColorPicker(context),
+                  backgroundColor: theme.colorScheme.surface,
+                  heroTag: 'map_color_picker_fab',
+                  child: Icon(Icons.palette_outlined, color: theme.colorScheme.primary),
+                ),
+              ),
 
               if (_isSearching)
                 MapSearchOverlay(
@@ -1084,6 +1105,17 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
     );
   }
 
+  void _showColorPicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _MapColorPickerSheet(
+        config: getIt<LocationConfigService>(),
+      ),
+    );
+  }
+
   Widget _buildMarker(
     double x,
     double y,
@@ -1102,6 +1134,7 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
     double angle = 0.0,
     String? name,
     DestinationEntity? destination,
+    Color? poiColor,
   }) {
     final matrix = _transformationController.value;
     final baseX = x * scaleX + offsetX;
@@ -1168,16 +1201,20 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
       );
     }
 
-    // POI
-    final size = (12.0 * zoom).clamp(1.5, 40.0);
+    // POI — selected state is larger so shift the positioning accordingly
+    final baseSize = (9.0 * zoom).clamp(1.5, 32.0);
     return Positioned(
-      left: pos.dx - size / 2,
-      top: pos.dy - size / 2,
+      left: pos.dx - baseSize / 2,
+      top: pos.dy - baseSize / 2,
       child: DestinationMarker(
-        size: size,
+        size: baseSize,
         icon: DestinationMarker.getIconForDestination(name ?? ''),
+        color: poiColor,
         onTap: destination != null
-            ? () => widget.onDestinationTap?.call(destination)
+            ? () {
+                setState(() => _selectedDestination = destination);
+                widget.onDestinationTap?.call(destination);
+              }
             : null,
       ),
     );
@@ -1294,12 +1331,14 @@ class RoutePainter extends CustomPainter {
   final List<Offset> coords;
   final double scaleX, scaleY;
   final double animationValue;
+  final Color routeColor;
 
   RoutePainter({
     required this.coords,
     required this.scaleX,
     required this.scaleY,
     required this.animationValue,
+    this.routeColor = const Color(0xFFFFD600),
   });
 
   @override
@@ -1337,17 +1376,7 @@ class RoutePainter extends CustomPainter {
         : null;
     if (pathMetrics == null) return;
 
-    // 1. Outer glow/shadow
-    canvas.drawPath(
-      path,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 14
-        ..color = const Color(0xFF4FC3F7).withValues(alpha: 0.15)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
-    );
-
-    // 2. White border for contrast (The 'Style' user loves)
+    // 1. White border for contrast
     canvas.drawPath(
       path,
       Paint()
@@ -1371,8 +1400,8 @@ class RoutePainter extends CustomPainter {
 
       final t = i / segmentCount;
       final segmentColor = Color.lerp(
-        const Color(0xFF4FC3F7), // Light blue start
-        const Color(0xFF2196F3), // Deep blue end
+        routeColor,
+        Color.lerp(routeColor, Colors.black, 0.35)!,
         t,
       )!;
 
@@ -1404,5 +1433,175 @@ class RoutePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(RoutePainter old) =>
-      old.animationValue != animationValue || old.coords != coords;
+      old.animationValue != animationValue ||
+      old.coords != coords ||
+      old.routeColor != routeColor;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Map Color Picker Bottom Sheet
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _MapColorPickerSheet extends StatefulWidget {
+  final LocationConfigService config;
+  const _MapColorPickerSheet({required this.config});
+
+  @override
+  State<_MapColorPickerSheet> createState() => _MapColorPickerSheetState();
+}
+
+class _MapColorPickerSheetState extends State<_MapColorPickerSheet> {
+  static const _routeSwatches = [
+    Color(0xFFFFD600), // yellow (default)
+    Color(0xFF26C6DA), // teal
+    Color(0xFF2196F3), // blue
+    Color(0xFF4CAF50), // green
+    Color(0xFFFF9800), // orange
+    Color(0xFF9C27B0), // purple
+    Color(0xFFF44336), // red
+    Color(0xFFFF4081), // pink
+    Color(0xFF607D8B), // blue-grey
+    Color(0xFF00BFA5), // deep teal
+  ];
+
+  static const _poiSwatches = [
+    Color(0xFF1E88E5), // blue (default)
+    Color(0xFFE53935), // red
+    Color(0xFF2E7D32), // dark green
+    Color(0xFFF57C00), // deep orange
+    Color(0xFF6A1B9A), // deep purple
+    Color(0xFF00838F), // dark teal
+    Color(0xFFF9A825), // amber
+    Color(0xFFAD1457), // deep pink
+    Color(0xFF37474F), // dark slate
+    Color(0xFF558B2F), // olive green
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.outline.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text('Map Colors', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 20),
+
+          // Route color
+          _SectionLabel(icon: Icons.route, label: 'Route Path'),
+          const SizedBox(height: 10),
+          ValueListenableBuilder<Color>(
+            valueListenable: widget.config.routeColorNotifier,
+            builder: (_, selected, __) => _ColorGrid(
+              swatches: _routeSwatches,
+              selected: selected,
+              onTap: (c) => widget.config.setRouteColor(c),
+            ),
+          ),
+
+          const SizedBox(height: 22),
+
+          // POI color
+          _SectionLabel(icon: Icons.place, label: 'Destination Markers'),
+          const SizedBox(height: 10),
+          ValueListenableBuilder<Color>(
+            valueListenable: widget.config.poiColorNotifier,
+            builder: (_, selected, __) => _ColorGrid(
+              swatches: _poiSwatches,
+              selected: selected,
+              onTap: (c) => widget.config.setPoiColor(c),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _SectionLabel({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ColorGrid extends StatelessWidget {
+  final List<Color> swatches;
+  final Color selected;
+  final void Function(Color) onTap;
+
+  const _ColorGrid({required this.swatches, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: swatches.map((c) {
+        final isSelected = c.toARGB32() == selected.toARGB32();
+        return GestureDetector(
+          onTap: () => onTap(c),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: c,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isSelected ? Colors.white : Colors.transparent,
+                width: 2.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: c.withValues(alpha: isSelected ? 0.6 : 0.25),
+                  blurRadius: isSelected ? 8 : 4,
+                  spreadRadius: isSelected ? 1 : 0,
+                ),
+              ],
+            ),
+            child: isSelected
+                ? const Icon(Icons.check_rounded, color: Colors.white, size: 18)
+                : null,
+          ),
+        );
+      }).toList(),
+    );
+  }
 }
