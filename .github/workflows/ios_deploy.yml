@@ -93,6 +93,15 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: false
 
+      - name: Select Xcode 16.2 (iOS 18.2 SDK)
+        run: |
+          echo "Selecting Xcode 16.2 to match local build environment..."
+          sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+          echo "Selected Xcode version:"
+          xcodebuild -version
+          echo "iOS SDK version:"
+          xcrun --sdk iphoneos --show-sdk-version
+
       - name: Clear Pub Cache
         run: |
           echo "Clearing pub cache to force fresh package resolution..."
