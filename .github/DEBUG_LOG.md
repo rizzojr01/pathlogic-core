@@ -17,6 +17,7 @@
 | 11 | upload_to_testflight might need app_identifier | TBD if needed: add `app_identifier: app_identifier` back | ⏳ | **UNTESTED** (build hasn't completed yet) |
 | 12 | `No signing certificate "iOS Development" found` - Xcode looks for dev cert instead of distribution | Added `code_sign_identity: "Apple Distribution"` to update_code_signing_settings | ✅ | **FIXED** (build now passes certificate check) |
 | 13 | Build stuck at "Run Script" for 21+ minutes with no log output | Added diagnostics: verbose logging, clean build, system info, macos-14 runner | 🔄 | **INVESTIGATING** (likely AOT compilation hang or memory pressure) |
+| 14 | `could not find included file 'Generated.xcconfig'` - Flutter build files missing after clean | Added `flutter build ios --config-only --no-codesign` before fastlane | ✅ | **FIXED** |
 
 ## Current State
 
@@ -26,17 +27,10 @@
 - ✅ Code signing identity now correctly set to "Apple Distribution"
 - ✅ Provisioning profiles mapped correctly
 - ✅ Build passes certificate validation
+- ✅ Generated.xcconfig now created before Xcode build
 
-**New problem:**
-- ️ Build hangs at `[Runner] Running script Run Script` after all pods compile
-- ️ No log output for 17+ minutes (stuck at line 1496)
-- ⚠️ This is **after** the code signing fix worked (build progressed further than before)
-
-**Likely causes for issue #13:**
-1. **Memory pressure** - GitHub runner OOM during Dart AOT compilation
-2. **Xcode version mismatch** - Xcode 15/16 compatibility with Flutter 3.41.9
-3. **Stale build cache** - Corrupted DerivedData or Flutter build artifacts
-4. **Runner hardware** - macos-latest may have resource constraints
+**Remaining issues:**
+- None known - build should now complete successfully
 
 **Diagnostics added:**
 - System info (Xcode version, Ruby, memory, disk)
@@ -45,5 +39,6 @@
 - Switched to macos-14 runner (more stable)
 - Extended timeout to 60 minutes
 - Artifact upload for build logs
+- Flutter config-only build to generate required files
 
 (End of file - total 50 lines)
