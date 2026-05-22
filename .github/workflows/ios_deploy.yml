@@ -42,8 +42,8 @@ env:
 
 jobs:
   deploy:
-    runs-on: macos-14
-    timeout-minutes: 60
+    runs-on: macos-15
+    timeout-minutes: 45
     
     env:
       FASTLANE_SKIP_UPDATE_CHECK: true
@@ -282,7 +282,8 @@ jobs:
                 verbose: true,
                 build_path: "./build",
                 clean: true,
-                skip_package_ipa: false
+                skip_package_ipa: false,
+                xcargs: "-tree-shake-icons NO"
               )
               
               puts "Archive build complete!"
@@ -353,7 +354,8 @@ jobs:
                 verbose: true,
                 build_path: "./build",
                 clean: true,
-                skip_package_ipa: false
+                skip_package_ipa: false,
+                xcargs: "-tree-shake-icons NO"
               )
               
               upload_to_app_store(
