@@ -171,6 +171,7 @@ jobs:
                 path: "Runner.xcodeproj",
                 team_id: team_id,
                 profile_name: "match AppStore #{app_identifier}",
+                code_sign_identity: "Apple Distribution",
                 targets: ["Runner"],
                 bundle_identifier: app_identifier
               )
@@ -218,6 +219,7 @@ jobs:
                 path: "Runner.xcodeproj",
                 team_id: team_id,
                 profile_name: "match AppStore #{app_identifier}",
+                code_sign_identity: "Apple Distribution",
                 targets: ["Runner"],
                 bundle_identifier: app_identifier
               )
