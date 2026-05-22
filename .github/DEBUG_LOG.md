@@ -15,3 +15,6 @@
 | 9 | `update_code_signing_settings` without profile leaves Xcode clueless | Added back team_id + profile_name + targets + bundle_identifier | 🔄 |
 | 10 | `build_app` missing export options | Added export_method + export_options.provisioningProfiles + destination | 🔄 |
 | 11 | upload_to_testflight might need app_identifier | TBD if needed: add `app_identifier: app_identifier` back | ⏳ |
+| 12 | `No signing certificate "iOS Development" found` - Xcode looks for dev cert instead of distribution | Added `code_sign_identity: "Apple Distribution"` to update_code_signing_settings | ✅ |
+
+(End of file - total 18 lines)
