@@ -183,7 +183,14 @@ jobs:
               
               build_app(
                 workspace: "Runner.xcworkspace",
-                scheme: "Runner"
+                scheme: "Runner",
+                export_method: "app-store",
+                export_options: {
+                  provisioningProfiles: {
+                    app_identifier => "match AppStore #{app_identifier}"
+                  }
+                },
+                destination: "generic/platform=iOS"
               )
               
               upload_to_testflight(
@@ -223,7 +230,14 @@ jobs:
               
               build_app(
                 workspace: "Runner.xcworkspace",
-                scheme: "Runner"
+                scheme: "Runner",
+                export_method: "app-store",
+                export_options: {
+                  provisioningProfiles: {
+                    app_identifier => "match AppStore #{app_identifier}"
+                  }
+                },
+                destination: "generic/platform=iOS"
               )
               
               upload_to_app_store(
