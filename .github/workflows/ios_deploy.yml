@@ -46,6 +46,7 @@ jobs:
     timeout-minutes: 45
     
     env:
+      CI: true
       FASTLANE_SKIP_UPDATE_CHECK: true
       FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 30
       FASTLANE_XCODEBUILD_SETTINGS_RETRIES: 3
@@ -241,6 +242,10 @@ jobs:
               puts "Fastlane Version: #{Fastlane::VERSION}"
               puts "=" * 80
               
+              # CRITICAL: Setup CI environment to prevent build freezing
+              # Creates temporary keychain for code signing
+              setup_ci if ENV['CI']
+              
               match(
                 type: "appstore",
                 app_identifier: app_identifier,
@@ -318,6 +323,10 @@ jobs:
               puts "Ruby Version: #{RUBY_VERSION}"
               puts "Fastlane Version: #{Fastlane::VERSION}"
               puts "=" * 80
+              
+              # CRITICAL: Setup CI environment to prevent build freezing
+              # Creates temporary keychain for code signing
+              setup_ci if ENV['CI']
               
               match(
                 type: "appstore",
