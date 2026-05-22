@@ -282,8 +282,7 @@ jobs:
                 verbose: true,
                 build_path: "./build",
                 clean: true,
-                skip_package_ipa: false,
-                xcargs: "-tree-shake-icons NO"
+                skip_package_ipa: false
               )
               
               puts "Archive build complete!"
@@ -354,8 +353,7 @@ jobs:
                 verbose: true,
                 build_path: "./build",
                 clean: true,
-                skip_package_ipa: false,
-                xcargs: "-tree-shake-icons NO"
+                skip_package_ipa: false
               )
               
               upload_to_app_store(
