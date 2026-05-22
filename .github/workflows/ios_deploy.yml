@@ -170,8 +170,7 @@ jobs:
                 scheme: "Runner",
                 export_method: "app-store",
                 export_team_id: team_id,
-                build_path: "/tmp/build",
-                xcargs: "CODE_SIGN_STYLE=Manual PROVISIONING_PROFILE_SPECIFIER='' DEVELOPMENT_TEAM=#{team_id}"
+                xcargs: "CODE_SIGN_STYLE=Manual 'PROVISIONING_PROFILE_SPECIFIER=match AppStore #{app_identifier}' DEVELOPMENT_TEAM=#{team_id}"
               )
               
               # Upload to TestFlight
@@ -202,7 +201,8 @@ jobs:
                 workspace: "Runner.xcworkspace",
                 scheme: "Runner",
                 export_method: "app-store",
-                export_team_id: team_id
+                export_team_id: team_id,
+                xcargs: "CODE_SIGN_STYLE=Manual 'PROVISIONING_PROFILE_SPECIFIER=match AppStore #{app_identifier}' DEVELOPMENT_TEAM=#{team_id}"
               )
               
               upload_to_app_store(
