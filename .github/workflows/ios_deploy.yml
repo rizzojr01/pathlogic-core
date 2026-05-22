@@ -156,7 +156,11 @@ jobs:
               asc_team_id = options[:asc_team_id]
               release_notes = options[:release_notes]
               
-              # Sync code signing certificates from git repo (readonly)
+              # Debug: show signing environment
+              sh("security find-identity -v -p codesigning || true")
+              sh("ls -la ~/Library/Developer/Xcode/UserData/Provisioning\\ Profiles/ || true")
+              
+              # Setup code signing
               match(
                 type: "appstore",
                 app_identifier: app_identifier,
@@ -164,16 +168,25 @@ jobs:
                 readonly: true
               )
               
-              # Build the app
+              # Configure project code signing settings
+              update_code_signing_settings(
+                path: "Runner.xcodeproj",
+                use_automatic_signing: false,
+                team_id: team_id,
+                profile_name: "match AppStore #{app_identifier}",
+                targets: ["Runner"],
+                bundle_identifier: app_identifier
+              )
+              
+              # Build and upload
               build_app(
                 workspace: "Runner.xcworkspace",
                 scheme: "Runner",
                 export_method: "app-store",
                 export_team_id: team_id,
-                xcargs: "CODE_SIGN_STYLE=Manual 'PROVISIONING_PROFILE_SPECIFIER=match AppStore #{app_identifier}' DEVELOPMENT_TEAM=#{team_id}"
+                skip_profile_detection: true
               )
               
-              # Upload to TestFlight
               upload_to_testflight(
                 app_identifier: app_identifier,
                 team_id: asc_team_id,
@@ -197,12 +210,21 @@ jobs:
                 readonly: true
               )
               
+              update_code_signing_settings(
+                path: "Runner.xcodeproj",
+                use_automatic_signing: false,
+                team_id: team_id,
+                profile_name: "match AppStore #{app_identifier}",
+                targets: ["Runner"],
+                bundle_identifier: app_identifier
+              )
+              
               build_app(
                 workspace: "Runner.xcworkspace",
                 scheme: "Runner",
                 export_method: "app-store",
                 export_team_id: team_id,
-                xcargs: "CODE_SIGN_STYLE=Manual 'PROVISIONING_PROFILE_SPECIFIER=match AppStore #{app_identifier}' DEVELOPMENT_TEAM=#{team_id}"
+                skip_profile_detection: true
               )
               
               upload_to_app_store(
