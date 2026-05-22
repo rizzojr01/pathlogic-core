@@ -91,7 +91,14 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          cache: true
+          cache: false
+
+      - name: Clear Pub Cache
+        run: |
+          echo "Clearing pub cache to force fresh package resolution..."
+          rm -rf ~/.pub-cache
+          rm -rf $FLUTTER_ROOT/.pub-cache
+          echo "Pub cache cleared"
 
       - name: Install Dependencies
         run: |
@@ -146,7 +153,6 @@ jobs:
           rm -rf ios/DerivedData
           rm -rf build
           flutter clean
-          cd ios && pod deintegrate || true && cd ..
           echo "Clean complete"
 
       - name: Generate Flutter Build Files
