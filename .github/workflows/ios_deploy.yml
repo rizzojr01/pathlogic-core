@@ -168,7 +168,11 @@ jobs:
               
               update_code_signing_settings(
                 use_automatic_signing: false,
-                path: "Runner.xcodeproj"
+                path: "Runner.xcodeproj",
+                team_id: team_id,
+                profile_name: "match AppStore #{app_identifier}",
+                targets: ["Runner"],
+                bundle_identifier: app_identifier
               )
               
               update_code_signing_settings(
@@ -204,7 +208,11 @@ jobs:
               
               update_code_signing_settings(
                 use_automatic_signing: false,
-                path: "Runner.xcodeproj"
+                path: "Runner.xcodeproj",
+                team_id: team_id,
+                profile_name: "match AppStore #{app_identifier}",
+                targets: ["Runner"],
+                bundle_identifier: app_identifier
               )
               
               update_code_signing_settings(
