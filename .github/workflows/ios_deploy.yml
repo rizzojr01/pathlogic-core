@@ -156,19 +156,11 @@ jobs:
               asc_team_id = options[:asc_team_id]
               release_notes = options[:release_notes]
               
-              api_key = app_store_connect_api_key(
-                key_id: ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"],
-                issuer_id: ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
-                key_content: ENV["APP_STORE_CONNECT_API_KEY_KEY"],
-                in_house: false
-              )
-              
               match(
                 type: "appstore",
                 app_identifier: app_identifier,
                 team_id: team_id,
-                readonly: true,
-                api_key: api_key
+                readonly: true
               )
               
               update_code_signing_settings(
@@ -176,7 +168,6 @@ jobs:
                 path: "Runner.xcodeproj"
               )
               
-              # Disable automatic signing for test target to avoid development cert requirement
               update_code_signing_settings(
                 use_automatic_signing: false,
                 path: "Runner.xcodeproj",
@@ -189,7 +180,6 @@ jobs:
               )
               
               upload_to_testflight(
-                api_key: api_key,
                 skip_waiting_for_build_processing: true,
                 changelog: release_notes
               )
@@ -202,19 +192,11 @@ jobs:
               asc_team_id = options[:asc_team_id]
               release_notes = options[:release_notes]
               
-              api_key = app_store_connect_api_key(
-                key_id: ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"],
-                issuer_id: ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
-                key_content: ENV["APP_STORE_CONNECT_API_KEY_KEY"],
-                in_house: false
-              )
-              
               match(
                 type: "appstore",
                 app_identifier: app_identifier,
                 team_id: team_id,
-                readonly: true,
-                api_key: api_key
+                readonly: true
               )
               
               update_code_signing_settings(
@@ -222,7 +204,6 @@ jobs:
                 path: "Runner.xcodeproj"
               )
               
-              # Disable automatic signing for test target to avoid development cert requirement
               update_code_signing_settings(
                 use_automatic_signing: false,
                 path: "Runner.xcodeproj",
@@ -235,7 +216,6 @@ jobs:
               )
               
               upload_to_app_store(
-                api_key: api_key,
                 skip_metadata: true,
                 skip_screenshots: true,
                 submit_for_review: false,
