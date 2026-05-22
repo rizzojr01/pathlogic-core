@@ -42,8 +42,13 @@ env:
 
 jobs:
   deploy:
-    runs-on: macos-latest
-    timeout-minutes: 45
+    runs-on: macos-14
+    timeout-minutes: 60
+    
+    env:
+      FASTLANE_SKIP_UPDATE_CHECK: true
+      FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 30
+      FASTLANE_XCODEBUILD_SETTINGS_RETRIES: 3
     
     steps:
       - name: Checkout Repository
@@ -131,8 +136,18 @@ jobs:
       - name: Install CocoaPods
         run: |
           cd ios
+          pod deintegrate || true
           pod install --repo-update
           cd ..
+
+      - name: Clean Previous Builds
+        run: |
+          echo "Cleaning previous build artifacts..."
+          rm -rf ios/DerivedData
+          rm -rf build
+          flutter clean
+          cd ios && pod deintegrate || true && cd ..
+          echo "Clean complete"
 
       - name: Setup fastlane
         run: |
@@ -141,6 +156,34 @@ jobs:
             mkdir -p fastlane
           fi
           cd ..
+
+      - name: System Diagnostics
+        run: |
+          echo "=== SYSTEM DIAGNOSTICS ==="
+          echo "Xcode Version:"
+          xcodebuild -version
+          echo ""
+          echo "Xcode Select Path:"
+          xcode-select -p
+          echo ""
+          echo "Ruby Version:"
+          ruby --version
+          echo ""
+          echo "Gemfile.lock:"
+          cd ios && bundle show fastlane && cd ..
+          echo ""
+          echo "Flutter Version:"
+          flutter --version
+          echo ""
+          echo "Memory Pressure:"
+          sysctl hw.memsize
+          sysctl hw.ncpu
+          echo ""
+          echo "Disk Space:"
+          df -h /
+          echo ""
+          echo "Available Schemes:"
+          xcodebuild -workspace ios/Runner.xcworkspace -list
 
       - name: Create Fastfile
         run: |
@@ -159,12 +202,29 @@ jobs:
               asc_team_id = options[:asc_team_id]
               release_notes = options[:release_notes]
               
+              puts "=" * 80
+              puts "BUILD DIAGNOSTICS"
+              puts "=" * 80
+              puts "App Identifier: #{app_identifier}"
+              puts "Team ID: #{team_id}"
+              puts "ASC Team ID: #{asc_team_id}"
+              puts "Xcode Version: #{`xcodebuild -version`.strip}"
+              puts "Ruby Version: #{RUBY_VERSION}"
+              puts "Fastlane Version: #{Fastlane::VERSION}"
+              puts "=" * 80
+              
               match(
                 type: "appstore",
                 app_identifier: app_identifier,
                 team_id: team_id,
-                readonly: true
+                readonly: true,
+                verbose: true
               )
+              
+              puts "Installed certificates:"
+              puts `security find-identity -v -s "Apple Distribution" 2>&1` || "No Apple Distribution certs found"
+              puts "Installed provisioning profiles:"
+              puts `ls -la ~/Library/MobileDevice/Provisioning\ Profiles/ 2>&1` || "No profiles found"
               
               update_code_signing_settings(
                 use_automatic_signing: false,
@@ -182,6 +242,11 @@ jobs:
                 targets: ["RunnerTests"]
               )
               
+              puts "Starting archive build..."
+              puts "Workspace: Runner.xcworkspace"
+              puts "Scheme: Runner"
+              puts "Export Method: app-store"
+              
               build_app(
                 workspace: "Runner.xcworkspace",
                 scheme: "Runner",
@@ -191,8 +256,16 @@ jobs:
                     app_identifier => "match AppStore #{app_identifier}"
                   }
                 },
-                destination: "generic/platform=iOS"
+                destination: "generic/platform=iOS",
+                verbose: true,
+                build_path: "./build",
+                clean: true,
+                skip_package_ipa: false
               )
+              
+              puts "Archive build complete!"
+              puts "Checking for .ipa file..."
+              puts `ls -lh *.ipa 2>&1` || "No .ipa found"
               
               upload_to_testflight(
                 skip_waiting_for_build_processing: true,
@@ -207,12 +280,27 @@ jobs:
               asc_team_id = options[:asc_team_id]
               release_notes = options[:release_notes]
               
+              puts "=" * 80
+              puts "BUILD DIAGNOSTICS"
+              puts "=" * 80
+              puts "App Identifier: #{app_identifier}"
+              puts "Team ID: #{team_id}"
+              puts "ASC Team ID: #{asc_team_id}"
+              puts "Xcode Version: #{`xcodebuild -version`.strip}"
+              puts "Ruby Version: #{RUBY_VERSION}"
+              puts "Fastlane Version: #{Fastlane::VERSION}"
+              puts "=" * 80
+              
               match(
                 type: "appstore",
                 app_identifier: app_identifier,
                 team_id: team_id,
-                readonly: true
+                readonly: true,
+                verbose: true
               )
+              
+              puts "Installed certificates:"
+              puts `security find-identity -v -s "Apple Distribution" 2>&1` || "No Apple Distribution certs found"
               
               update_code_signing_settings(
                 use_automatic_signing: false,
@@ -239,7 +327,11 @@ jobs:
                     app_identifier => "match AppStore #{app_identifier}"
                   }
                 },
-                destination: "generic/platform=iOS"
+                destination: "generic/platform=iOS",
+                verbose: true,
+                build_path: "./build",
+                clean: true,
+                skip_package_ipa: false
               )
               
               upload_to_app_store(
@@ -304,11 +396,15 @@ jobs:
             release_notes:"${{ github.event.inputs.release_notes || 'New build deployed via GitHub Actions' }}"
 
       - name: Upload Build Artifact
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ios-build-logs
+          name: ios-build-logs-${{ github.run_id }}
           path: |
             ios/build_logs
             ios/fastlane/report.xml
+            ios/*.ipa
+            ios/build/**/*.app
+            ~/Library/Logs/scan/*.log
           retention-days: 7
+          if-no-files-found: ignore
