@@ -18,19 +18,32 @@
 | 12 | `No signing certificate "iOS Development" found` - Xcode looks for dev cert instead of distribution | Added `code_sign_identity: "Apple Distribution"` to update_code_signing_settings | ✅ | **FIXED** (build now passes certificate check) |
 | 13 | Build stuck at "Run Script" for 21+ minutes with no log output | Added diagnostics: verbose logging, clean build, system info, macos-14 runner | 🔄 | **INVESTIGATING** (likely AOT compilation hang or memory pressure) |
 | 14 | `could not find included file 'Generated.xcconfig'` - Flutter build files missing after clean | Added `flutter build ios --config-only --no-codesign` before fastlane | ✅ | **FIXED** |
+| 15 | `camera_avfoundation` compilation errors - plugin uses unavailable AVCaptureSession APIs | camera 0.12.0+1 still has iOS 17.5 SDK incompatibility | ❌ | **BLOCKING** (camera plugin bug, need to remove or wait for fix) |
 
 ## Current State
 
 **What's working:**
 - ✅ SSH key authentication for certificates repo
 - ✅ Match downloads correct distribution certificates
-- ✅ Code signing identity now correctly set to "Apple Distribution"
+- ✅ Code signing identity correctly set to "Apple Distribution"
 - ✅ Provisioning profiles mapped correctly
-- ✅ Build passes certificate validation
-- ✅ Generated.xcconfig now created before Xcode build
+- ✅ Build passes certificate validation (all signing issues resolved!)
+- ✅ Generated.xcconfig created before Xcode build
+- ✅ iOS 13.0 deployment target set
+- ✅ Firebase Swift 5.0 compatibility
 
-**Remaining issues:**
-- None known - build should now complete successfully
+**Current blocker:**
+- ❌ `camera_avfoundation-0.10.1` fails compilation on iOS 17.5 SDK
+  - Error: `AVCaptureSession` has no member `wasInterruptedNotification`
+  - This is a **camera plugin bug**, not a signing/build config issue
+  - Even latest camera version (0.12.0+1) has this problem
+
+**Options to proceed:**
+1. **Remove camera package** temporarily → Build succeeds, deploy to TestFlight
+2. **Wait for camera plugin fix** → Blocked indefinitely
+3. **Fork and patch camera** → High effort, maintain fork
+
+**Recommendation:** Remove camera from pubspec.yaml, deploy to TestFlight, re-add when plugin is fixed.
 
 **Diagnostics added:**
 - System info (Xcode version, Ruby, memory, disk)
