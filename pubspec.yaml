@@ -32,7 +32,7 @@ dependencies:
   dartz: ^0.10.1
 
   # Camera
-  camera: ^0.11.0+2
+  camera: 0.12.0+1
   path_provider: ^2.1.5
 
   # Location
@@ -44,6 +44,7 @@ dependencies:
   # Firebase
   firebase_core: ^3.12.1
   firebase_messaging: ^15.2.4
+  firebase_crashlytics: 4.1.4
 
   # Utilities
   logger: ^2.5.0
@@ -57,7 +58,6 @@ dependencies:
   fuzzy: ^0.5.1
   stream_transform: ^2.1.1
   image: ^4.3.0
-  firebase_crashlytics: ^4.3.10
   flutter_tts: ^4.2.5
 
 dev_dependencies:
