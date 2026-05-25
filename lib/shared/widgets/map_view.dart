@@ -288,13 +288,12 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
     final cx = containerSize.width / 2;
     final cy = containerSize.height / 2;
     final targetMatrix = Matrix4.identity()
-      ..translateByDouble(
+      ..translate(
         cx - userDisplayX * initialZoom,
         cy - userDisplayY * initialZoom,
         0,
-        1,
       )
-      ..scaleByDouble(initialZoom, initialZoom, initialZoom, 1);
+      ..scale(initialZoom, initialZoom, initialZoom);
 
     if (animate) {
       final animation = Matrix4Tween(
