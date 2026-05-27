@@ -75,6 +75,10 @@ flutter_launcher_icons:
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/images/unav_logo.png"
 
+dependency_overrides:
+  flutter_web_plugins:
+    path: local_packages/flutter_web_plugins
+
 flutter:
   uses-material-design: true
 
