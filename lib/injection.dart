@@ -73,6 +73,9 @@ import 'package:smart_sense/features/auth/domain/repositories/auth_repository.da
 import 'package:smart_sense/features/auth/domain/usecases/login_usecase.dart';
 import 'package:smart_sense/features/auth/domain/usecases/signup_usecase.dart';
 import 'package:smart_sense/features/auth/domain/usecases/logout_usecase.dart';
+import 'package:smart_sense/features/auth/domain/usecases/forgot_password_usecase.dart';
+import 'package:smart_sense/features/auth/domain/usecases/verify_reset_token_usecase.dart';
+import 'package:smart_sense/features/auth/domain/usecases/reset_password_usecase.dart';
 import 'package:smart_sense/features/auth/presentation/bloc/auth_bloc.dart';
 
 // Profile
@@ -80,6 +83,7 @@ import 'package:smart_sense/features/profile/data/datasources/profile_remote_dat
 import 'package:smart_sense/features/profile/data/repositories/profile_repository_impl.dart';
 import 'package:smart_sense/features/profile/domain/repositories/profile_repository.dart';
 import 'package:smart_sense/features/profile/domain/usecases/get_me_usecase.dart';
+import 'package:smart_sense/features/profile/domain/usecases/update_profile_usecase.dart';
 
 final getIt = GetIt.instance;
 
@@ -153,6 +157,9 @@ Future<void> initializeDependencies() async {
   getIt.registerLazySingleton(() => LoginUseCase(getIt()));
   getIt.registerLazySingleton(() => SignupUseCase(getIt()));
   getIt.registerLazySingleton(() => LogoutUseCase(getIt()));
+  getIt.registerLazySingleton(() => ForgotPasswordUseCase(getIt()));
+  getIt.registerLazySingleton(() => VerifyResetTokenUseCase(getIt()));
+  getIt.registerLazySingleton(() => ResetPasswordUseCase(getIt()));
 
   // Profile Feature
   getIt.registerLazySingleton<ProfileRemoteDataSource>(
@@ -165,6 +172,7 @@ Future<void> initializeDependencies() async {
     ),
   );
   getIt.registerLazySingleton(() => GetMeUseCase(getIt()));
+  getIt.registerLazySingleton(() => UpdateProfileUseCase(getIt()));
 
   getIt.registerFactory(
     () => AuthBloc(
@@ -172,6 +180,10 @@ Future<void> initializeDependencies() async {
       signupUseCase: getIt(),
       getMeUseCase: getIt(),
       logoutUseCase: getIt(),
+      forgotPasswordUseCase: getIt(),
+      verifyResetTokenUseCase: getIt(),
+      resetPasswordUseCase: getIt(),
+      updateProfileUseCase: getIt(),
     ),
   );
 

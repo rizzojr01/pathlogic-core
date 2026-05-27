@@ -30,4 +30,28 @@ class ProfileRepositoryImpl implements ProfileRepository {
       return Left<Failure, UserEntity>(ServerFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, UserEntity>> updateProfile({
+    String? nickname,
+    String? phone,
+  }) async {
+    try {
+      final token = authLocalDataSource.getToken();
+      if (token == null) {
+        return const Left<Failure, UserEntity>(
+          CacheFailure('Not authenticated'),
+        );
+      }
+      final user = await remoteDataSource.updateProfile(
+        token: token,
+        nickname: nickname,
+        phone: phone,
+      );
+      await authLocalDataSource.saveUser(user);
+      return Right<Failure, UserEntity>(user);
+    } catch (e) {
+      return Left<Failure, UserEntity>(ServerFailure(e.toString()));
+    }
+  }
 }

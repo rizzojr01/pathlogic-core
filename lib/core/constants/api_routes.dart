@@ -8,6 +8,8 @@ class ApiRoutes {
   static const String login = '/auth/login';
   static const String signup = '/auth/signup';
   static const String me = '/auth/me';
+  static const String forgotPassword = '/auth/forgot-password';
+  static const String resetPassword = '/auth/reset-password';
 
   // Camera Endpoints
   static const String uploadPhoto = '/photos/upload';

@@ -5,6 +5,7 @@ class UserEntity extends BaseEntity {
   final String id;
   final String email;
   final String nickname;
+  final String? phone;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -12,10 +13,11 @@ class UserEntity extends BaseEntity {
     required this.id,
     required this.email,
     required this.nickname,
+    this.phone,
     required this.createdAt,
     required this.updatedAt,
   });
 
   @override
-  List<Object?> get props => [id, email, nickname, createdAt, updatedAt];
+  List<Object?> get props => [id, email, nickname, phone, createdAt, updatedAt];
 }
