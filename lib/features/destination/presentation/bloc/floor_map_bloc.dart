@@ -57,11 +57,38 @@ class FloorMapBloc extends Bloc<FloorMapEvent, FloorMapState> {
 
       final effectiveFloor = event.initialFloor ?? locationConfigService.floor;
 
-      final floorPlan = await floorPlanCacheService.getCachedFloorPlanBase64(
+      final isStale = floorPlanCacheService.isCacheStale(
         place: locationConfigService.place,
         building: locationConfigService.building,
         floor: effectiveFloor,
       );
+      final cachedFloorPlan =
+          await floorPlanCacheService.getCachedFloorPlanBase64(
+        place: locationConfigService.place,
+        building: locationConfigService.building,
+        floor: effectiveFloor,
+      );
+      String? floorPlan = isStale ? null : cachedFloorPlan;
+
+      if (floorPlan == null) {
+        try {
+          final fetchedFloorPlan = await locateMeRemoteDataSource.getFloorPlan(
+            place: locationConfigService.place,
+            building: locationConfigService.building,
+            floor: effectiveFloor,
+          );
+          floorPlan = fetchedFloorPlan.base64Image;
+          await floorPlanCacheService.cacheFloorPlan(
+            place: locationConfigService.place,
+            building: locationConfigService.building,
+            floor: effectiveFloor,
+            base64Image: fetchedFloorPlan.base64Image,
+          );
+        } catch (_) {
+          if (cachedFloorPlan == null || cachedFloorPlan.isEmpty) rethrow;
+          floorPlan = cachedFloorPlan;
+        }
+      }
 
       emit(
         FloorMapReady(
@@ -82,12 +109,19 @@ class FloorMapBloc extends Bloc<FloorMapEvent, FloorMapState> {
     final currentState = state;
     if (currentState is! FloorMapReady) return;
 
-    // Check cache first
-    final cached = await floorPlanCacheService.getCachedFloorPlanBase64(
+    // Check cache first, but refresh maps older than 24 hours.
+    final isStale = floorPlanCacheService.isCacheStale(
       place: locationConfigService.place,
       building: locationConfigService.building,
       floor: event.floor,
     );
+    final cachedFloorPlan = await floorPlanCacheService
+        .getCachedFloorPlanBase64(
+          place: locationConfigService.place,
+          building: locationConfigService.building,
+          floor: event.floor,
+        );
+    final cached = isStale ? null : cachedFloorPlan;
 
     if (cached != null) {
       emit(
@@ -123,6 +157,15 @@ class FloorMapBloc extends Bloc<FloorMapEvent, FloorMapState> {
         ),
       );
     } catch (e) {
+      if (cachedFloorPlan != null && cachedFloorPlan.isNotEmpty) {
+        emit(
+          currentState.copyWith(
+            selectedFloor: event.floor,
+            base64FloorPlan: cachedFloorPlan,
+          ),
+        );
+        return;
+      }
       emit(FloorMapError(e.toString()));
     }
   }
