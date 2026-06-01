@@ -5,97 +5,104 @@ import '../services/location_config_service.dart';
 void showOffsetSettingsModal(BuildContext context) {
   final theme = Theme.of(context);
   final locationConfig = getIt<LocationConfigService>();
-  final controller = TextEditingController(
-    text: locationConfig.offsetInMeters.toString(),
-  );
 
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
+    isDismissible: true,
+    enableDrag: true,
+    barrierColor: Colors.transparent,
     backgroundColor: Colors.transparent,
-    builder: (context) => Container(
+    builder: (context) => Padding(
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-        left: 24,
-        right: 24,
-        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Position Offset',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Adjust the vertical offset in meters for navigation instructions.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          TextField(
-            controller: controller,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true, signed: true),
-            decoration: InputDecoration(
-              labelText: 'Offset (meters)',
-              hintText: 'e.g. 1.5 or -0.5',
-              suffixText: 'm',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              prefixIcon: const Icon(Icons.height),
-            ),
-            autofocus: true,
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: () {
-              final value = double.tryParse(controller.text) ?? 0.0;
-              locationConfig.setOffsetInMeters(value);
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Offset updated to ${value}m'),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            child: const Text('Update Offset'),
-          ),
-        ],
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface.withValues(alpha: 0.95),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: _ArHeadingOffsetCompact(locationConfig: locationConfig),
+        ),
       ),
     ),
   );
+}
+
+class _ArHeadingOffsetCompact extends StatelessWidget {
+  final LocationConfigService locationConfig;
+
+  const _ArHeadingOffsetCompact({required this.locationConfig});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ValueListenableBuilder<double>(
+      valueListenable: locationConfig.arHeadingOffsetDegNotifier,
+      builder: (context, currentValue, _) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 32,
+              height: 3,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.onSurfaceVariant
+                    .withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                      minWidth: 32, minHeight: 32),
+                  tooltip: 'Reset',
+                  icon: const Icon(Icons.refresh, size: 18),
+                  onPressed: () =>
+                      locationConfig.setArHeadingOffsetDeg(0),
+                ),
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      trackHeight: 3,
+                      thumbShape: const RoundSliderThumbShape(
+                          enabledThumbRadius: 8),
+                      overlayShape: const RoundSliderOverlayShape(
+                          overlayRadius: 14),
+                    ),
+                    child: Slider(
+                      value: currentValue.clamp(-180.0, 180.0),
+                      min: -180,
+                      max: 180,
+                      divisions: 720,
+                      onChanged: (v) =>
+                          locationConfig.setArHeadingOffsetDeg(v),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 56,
+                  child: Text(
+                    '${currentValue.toStringAsFixed(1)}°',
+                    textAlign: TextAlign.right,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
