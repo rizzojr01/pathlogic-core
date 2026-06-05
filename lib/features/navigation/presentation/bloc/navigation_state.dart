@@ -46,6 +46,19 @@ class NavigationReady extends NavigationState {
     this.capturedReferenceHeading,
   });
 
+  NavigationReady copyWith({double? headingAtStart}) {
+    return NavigationReady(
+      currentLocation: currentLocation,
+      route: route,
+      floorPlanBase64: floorPlanBase64,
+      destinations: destinations,
+      floorPlansByFloor: floorPlansByFloor,
+      destinationsByFloor: destinationsByFloor,
+      headingAtStart: headingAtStart ?? this.headingAtStart,
+      capturedReferenceHeading: capturedReferenceHeading,
+    );
+  }
+
   @override
   List<Object?> get props => [
     currentLocation,

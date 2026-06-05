@@ -13,6 +13,19 @@ abstract class AuthRemoteDataSource {
     required String nickname,
     required String password,
   });
+
+  Future<void> forgotPassword(String email);
+
+  Future<void> verifyResetToken({
+    required String email,
+    required String token,
+  });
+
+  Future<void> resetPassword({
+    required String email,
+    required String token,
+    required String newPassword,
+  });
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -43,5 +56,36 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       data: {'email': email, 'nickname': nickname, 'password': password},
     );
     return AuthResponseModel.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<void> forgotPassword(String email) async {
+    await apiClient.post(
+      ApiRoutes.forgotPassword,
+      data: {'email': email},
+    );
+  }
+
+  @override
+  Future<void> verifyResetToken({
+    required String email,
+    required String token,
+  }) async {
+    await apiClient.post(
+      '/auth/verify-reset-token',
+      data: {'email': email, 'token': token},
+    );
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {
+    await apiClient.post(
+      ApiRoutes.resetPassword,
+      data: {'email': email, 'token': token, 'new_password': newPassword},
+    );
   }
 }

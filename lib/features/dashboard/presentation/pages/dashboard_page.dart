@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/services/speech_service.dart';
 
 import '../../../../injection.dart';
 import '../../../../core/constants/app_text.dart';
@@ -33,6 +34,7 @@ class _DashboardPageState extends State<DashboardPage>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadData();
+    getIt<SpeechService>().speak("Welcome. Please select your destination.");
   }
 
   @override
@@ -77,6 +79,7 @@ class _DashboardPageState extends State<DashboardPage>
   }
 
   void _handleNavigateMe() {
+    getIt<SpeechService>().speak("Search for your destination.");
     context.push('/destination').then((_) => _loadData());
   }
 

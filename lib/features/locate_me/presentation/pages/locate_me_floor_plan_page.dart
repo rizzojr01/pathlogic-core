@@ -36,7 +36,7 @@ class _LocateMeFloorPlanPageState extends State<LocateMeFloorPlanPage> {
             final locateState = context.read<LocateMeBloc>().state;
             if (locateState is LocateMeReady) {
               context.push(
-                '/navigation',
+                '/route-overview',
                 extra: {
                   'destination': destination,
                   'manualCoordinates': {

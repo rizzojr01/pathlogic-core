@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Service to manage user's selected location configuration (place, building, floor)
@@ -25,8 +27,36 @@ class LocationConfigService {
   static const String _keyAlternateSampleImagePath =
       'alternate_sample_image_path';
   static const String _keyOffsetInMeters = 'navigation_offset_in_meters';
+  static const String _keyShowDebugBanner = 'debug_show_banner';
+  static const String _keyRouteColor = 'map_route_color';
+  static const String _keyPoiColor = 'map_poi_color';
+
+  // Default colors
+  static const Color _defaultRouteColor = Color(0xFFFFD600);
+  static const Color _defaultPoiColor = Color(0xFF1E88E5);
 
   LocationConfigService(this._prefs);
+
+  late final ValueNotifier<bool> debugBannerNotifier =
+      ValueNotifier(_prefs.getBool(_keyShowDebugBanner) ?? false);
+
+  late final ValueNotifier<Color> routeColorNotifier = ValueNotifier(
+    Color(_prefs.getInt(_keyRouteColor) ?? _defaultRouteColor.toARGB32()),
+  );
+
+  late final ValueNotifier<Color> poiColorNotifier = ValueNotifier(
+    Color(_prefs.getInt(_keyPoiColor) ?? _defaultPoiColor.toARGB32()),
+  );
+
+  Future<void> setRouteColor(Color color) async {
+    routeColorNotifier.value = color;
+    await _prefs.setInt(_keyRouteColor, color.toARGB32());
+  }
+
+  Future<void> setPoiColor(Color color) async {
+    poiColorNotifier.value = color;
+    await _prefs.setInt(_keyPoiColor, color.toARGB32());
+  }
 
   /// Get whether to use sample image for localization
   bool get useSampleImage => _prefs.getBool(_keyUseSampleImage) ?? false;
@@ -91,6 +121,13 @@ class LocationConfigService {
 
   Future<void> setOffsetInMeters(double value) async {
     await _prefs.setDouble(_keyOffsetInMeters, value);
+  }
+
+  bool get showDebugBanner => debugBannerNotifier.value;
+
+  Future<void> setShowDebugBanner(bool value) async {
+    debugBannerNotifier.value = value;
+    await _prefs.setBool(_keyShowDebugBanner, value);
   }
 
   /// Get the selected place

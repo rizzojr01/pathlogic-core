@@ -45,7 +45,7 @@ class ProfilePage extends StatelessWidget {
                           icon: Icons.person_outline_rounded,
                           title: 'Personal Information',
                           subtitle: 'Name, Email, Phone',
-                          onTap: () {},
+                          onTap: () => context.push('/personal-information'),
                         ),
                         _SettingsItem(
                           icon: Icons.history_rounded,
@@ -57,7 +57,7 @@ class ProfilePage extends StatelessWidget {
                           icon: Icons.bookmark_border_rounded,
                           title: 'Saved Places',
                           subtitle: 'Work, Home, Favorites',
-                          onTap: () {},
+                          onTap: () => _showComingSoon(context, 'Saved Places'),
                         ),
                       ]),
                       const SizedBox(height: 32),
@@ -74,13 +74,13 @@ class ProfilePage extends StatelessWidget {
                           icon: Icons.notifications_none_rounded,
                           title: 'Notifications',
                           subtitle: 'Alerts, Sounds, Vibration',
-                          onTap: () {},
+                          onTap: () => _showComingSoon(context, 'Notifications'),
                         ),
                         _SettingsItem(
                           icon: Icons.shield_outlined,
                           title: 'Privacy & Security',
                           subtitle: 'Permissions, Biometrics',
-                          onTap: () {},
+                          onTap: () => _showComingSoon(context, 'Privacy & Security'),
                         ),
                         _SettingsItem(
                           icon: Icons.palette_outlined,
@@ -98,7 +98,7 @@ class ProfilePage extends StatelessWidget {
                           icon: Icons.translate_rounded,
                           title: 'Language',
                           subtitle: 'English (US)',
-                          onTap: () {},
+                          onTap: () => _showComingSoon(context, 'Language'),
                         ),
                         _SettingsItem(
                           icon: Icons.compress_rounded,
@@ -121,13 +121,13 @@ class ProfilePage extends StatelessWidget {
                           icon: Icons.help_outline_rounded,
                           title: 'Help Center',
                           subtitle: 'FAQs, Contact Support',
-                          onTap: () {},
+                          onTap: () => _showComingSoon(context, 'Help Center'),
                         ),
                         _SettingsItem(
                           icon: Icons.info_outline_rounded,
                           title: 'About Smart Sense',
                           subtitle: 'Version 2.0.4',
-                          onTap: () {},
+                          onTap: () => _showComingSoon(context, 'About Smart Sense'),
                         ),
                       ]),
                       const SizedBox(height: 32),
@@ -317,6 +317,41 @@ class ProfilePage extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  void _showComingSoon(BuildContext context, String featureName) {
+    final theme = Theme.of(context);
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              Icons.rocket_launch_rounded,
+              color: theme.colorScheme.onPrimary,
+              size: 18,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '$featureName — Available soon!',
+                style: TextStyle(
+                  color: theme.colorScheme.onPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: theme.colorScheme.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+        margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -648,6 +683,68 @@ class ProfilePage extends StatelessWidget {
                       ),
                     ],
                   ),
+                ),
+              ),
+              Divider(
+                height: 1,
+                indent: 68,
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+              ),
+              // Debug Banner Toggle
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.errorContainer.withValues(
+                          alpha: 0.3,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.developer_mode_outlined,
+                        color: theme.colorScheme.error,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Debug Banner',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Show debug banner on map UI',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch.adaptive(
+                      value: locationConfig.showDebugBanner,
+                      onChanged: (value) async {
+                        await locationConfig.setShowDebugBanner(value);
+                        setState(() {});
+                      },
+                      activeColor: theme.colorScheme.error,
+                    ),
+                  ],
                 ),
               ),
               Divider(

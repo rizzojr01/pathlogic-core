@@ -35,3 +35,23 @@ class AuthFailure extends AuthState {
   @override
   List<Object?> get props => [message];
 }
+
+class AuthActionLoading extends AuthState {
+  @override
+  List<Object?> get props => [];
+}
+
+class ForgotPasswordSuccess extends AuthState {
+  @override
+  List<Object?> get props => [];
+}
+
+class ResetPasswordSuccess extends AuthState {
+  @override
+  List<Object?> get props => [];
+}
+
+class ResetTokenVerified extends AuthState {
+  @override
+  List<Object?> get props => [];
+}
