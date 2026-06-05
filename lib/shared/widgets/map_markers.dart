@@ -235,3 +235,58 @@ class DestinationMarker extends StatelessWidget {
     return Icons.place;
   }
 }
+
+/// Small, low-emphasis marker for door locations on the floor map.
+class DoorLocationMarker extends StatelessWidget {
+  final double size;
+  final Color? color;
+
+  const DoorLocationMarker({super.key, this.size = 16.0, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    // Use theme's secondary color as the default accent for doors to fit perfectly
+    // with the app's selected scheme and contrast with green/red markers.
+    final markerColor = color ?? theme.colorScheme.secondary;
+
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          // Semi-transparent surface background ensures readability on black & white maps
+          color: isDark 
+              ? Colors.black.withValues(alpha: 0.85) 
+              : Colors.white.withValues(alpha: 0.9),
+          border: Border.all(
+            color: markerColor,
+            width: (size / 12.0).clamp(1.0, 2.0),
+          ),
+          boxShadow: [
+            // Soft colored glow to highlight interactive points on B&W maps
+            BoxShadow(
+              color: markerColor.withValues(alpha: 0.25),
+              blurRadius: 4,
+              spreadRadius: 1,
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 2,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Icon(
+          Icons.meeting_room_outlined,
+          size: size * 0.60,
+          color: markerColor,
+        ),
+      ),
+    );
+  }
+}

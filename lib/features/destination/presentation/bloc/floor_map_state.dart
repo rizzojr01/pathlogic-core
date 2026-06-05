@@ -1,4 +1,5 @@
 import '../../../../core/base/base_state.dart';
+import '../../domain/entities/destination_entity.dart';
 
 abstract class FloorMapState extends BaseState {
   const FloorMapState();
@@ -16,6 +17,8 @@ class FloorMapReady extends FloorMapState {
   final String? base64FloorPlan;
   final List<String> availableFloors;
   final String selectedFloor;
+  final List<DestinationEntity> destinations;
+  final List<DestinationEntity> allDestinations;
   final double? x;
   final double? y;
 
@@ -23,6 +26,8 @@ class FloorMapReady extends FloorMapState {
     this.base64FloorPlan,
     this.availableFloors = const [],
     this.selectedFloor = '',
+    this.destinations = const [],
+    this.allDestinations = const [],
     this.x,
     this.y,
   });
@@ -32,6 +37,8 @@ class FloorMapReady extends FloorMapState {
     base64FloorPlan,
     availableFloors,
     selectedFloor,
+    destinations,
+    allDestinations,
     x,
     y,
   ];
@@ -40,6 +47,8 @@ class FloorMapReady extends FloorMapState {
     String? base64FloorPlan,
     List<String>? availableFloors,
     String? selectedFloor,
+    List<DestinationEntity>? destinations,
+    List<DestinationEntity>? allDestinations,
     double? x,
     double? y,
   }) {
@@ -47,6 +56,8 @@ class FloorMapReady extends FloorMapState {
       base64FloorPlan: base64FloorPlan ?? this.base64FloorPlan,
       availableFloors: availableFloors ?? this.availableFloors,
       selectedFloor: selectedFloor ?? this.selectedFloor,
+      destinations: destinations ?? this.destinations,
+      allDestinations: allDestinations ?? this.allDestinations,
       x: x ?? this.x,
       y: y ?? this.y,
     );

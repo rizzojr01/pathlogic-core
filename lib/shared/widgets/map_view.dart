@@ -507,6 +507,23 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
     return 0.0;
   }
 
+  List<DoorLocationEntity> _uniqueDoorLocations() {
+    final seen = <String>{};
+    final doors = <DoorLocationEntity>[];
+
+    for (final destination in widget.destinations) {
+      final door = destination.doorLocation;
+      if (door == null) continue;
+
+      final key = '${door.x.toStringAsFixed(1)}:${door.y.toStringAsFixed(1)}';
+      if (seen.add(key)) {
+        doors.add(door);
+      }
+    }
+
+    return doors;
+  }
+
   void _initializeView(Size containerSize, Size imageSize) {
     if (_hasInitializedView || !widget.autoCenterOnUser) return;
     _hasInitializedView = true;
@@ -869,6 +886,23 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
 
                 return Stack(
                   children: [
+                    // Doors
+                    ..._uniqueDoorLocations().map(
+                      (door) => _buildMarker(
+                        door.x,
+                        door.y,
+                        scaleX,
+                        scaleY,
+                        centerOffsetX,
+                        centerOffsetY,
+                        zoomScale,
+                        rotationAngle,
+                        displayWidth,
+                        displayHeight,
+                        isDoor: true,
+                      ),
+                    ),
+
                     // POIs
                     ...widget.destinations.map(
                       (d) => _buildMarker(
@@ -1073,6 +1107,7 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
     bool isUser = false,
     bool isPOI = false,
     bool isTarget = false,
+    bool isDoor = false,
     bool isCheckpoint = false,
     double angle = 0.0,
     String? name,
@@ -1131,6 +1166,15 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
               ? 0.0
               : (angle + 90) + (rotation * 180 / math.pi),
         ),
+      );
+    }
+
+    if (isDoor) {
+      final size = (9.0 * zoom).clamp(4.0, 22.0);
+      return Positioned(
+        left: pos.dx - size / 2,
+        top: pos.dy - size / 2,
+        child: DoorLocationMarker(size: size),
       );
     }
 
@@ -1227,6 +1271,11 @@ class _MapLegend extends StatelessWidget {
             color: const Color(0xFFEA4335),
             icon: Icons.place,
             label: 'POI / Landmark',
+          ),
+          _LegendItem(
+            color: theme.colorScheme.secondary,
+            icon: Icons.meeting_room_outlined,
+            label: 'Door Location',
           ),
           _LegendItem(
             color: const Color(0xFF2196F3),
