@@ -412,7 +412,7 @@ class ArNavigationBloc extends Bloc<ArNavigationEvent, ArNavigationState> {
       previousWaypointIndex: previousWaypointIndex,
     );
 
-    _handleArOverlay(update, localizedPose);
+    _handleArOverlay(update, localizedPose, event.pose);
     _handleAudioGuidance(update, localizedPose);
 
     final guidanceMessage = _buildGuidanceMessage(update, localizedPose);
@@ -716,7 +716,11 @@ class ArNavigationBloc extends Bloc<ArNavigationEvent, ArNavigationState> {
     }
   }
 
-  void _handleArOverlay(ArTrackingUpdate update, LocalizedPose currentPose) {
+  void _handleArOverlay(
+    ArTrackingUpdate update,
+    LocalizedPose currentPose,
+    ArPose currentArPose,
+  ) {
     if (_route == null || _originArPose == null || _referencePose == null) {
       return;
     }
@@ -725,32 +729,37 @@ class ArNavigationBloc extends Bloc<ArNavigationEvent, ArNavigationState> {
     final reference = _referencePose!;
     final origin = _originArPose!;
 
-    // Matches ar_temp _floorplanPointToArWorld:
-    //   sumHeadingDeg = reference.heading + captureHeading (AR yaw at session start).
-    // Must use identical angle as ArPoseTransformer (forward direction) so path and
-    // tracked position share the same rotation frame. Includes the live-tunable
-    // heading offset so adjustments rotate the AR path overlay in real time.
+    // Same rotation as the static anchor path used to use — sumHeadingDeg is
+    // the floorplan↔AR-world rotation, fixed for the session apart from the
+    // live-tunable heading offset.
     final captureHeading = _normalizeDegrees(origin.heading);
     final sumHeadingDeg = _normalizeDegrees(
       reference.heading + captureHeading + _locationConfig.arHeadingOffsetDeg,
     );
     final sumHeadingRad = sumHeadingDeg * math.pi / 180.0;
 
-    // Origin pose in math-plane (East, North).
-    final originWorldX = origin.worldX ?? origin.x;
-    final originWorldZ = origin.worldZ ?? -origin.y;
-    final originMathX = originWorldX;
-    final originMathY = -originWorldZ; // North
+    // Re-anchor the path at the user's CURRENT pose every frame. The
+    // floorplan anchor is the snapped pose; the AR-world anchor is the
+    // matching raw camera position. Because the FP pose is derived from the
+    // AR pose via ArPoseTransformer, the two anchors move in lockstep, so
+    // path vertices stay world-stable across frames *when sumHeadingDeg is
+    // correct*. When it isn't, the rotation error now only affects the
+    // distance from user to each waypoint — not the distance from the
+    // session origin — so drift can't accumulate over a long walk.
+    final anchorFpMathX = currentPose.x;
+    final anchorFpMathY = -currentPose.y; // image → math plane
 
-    // Reference in math-plane (flip Y from image).
-    final refMathX = reference.x;
-    final refMathY = -reference.y;
+    final anchorArWorldX = currentArPose.worldX ?? currentArPose.x;
+    final anchorArWorldZ = currentArPose.worldZ ?? -currentArPose.y;
+    final anchorArMathX = anchorArWorldX;
+    final anchorArMathY = -anchorArWorldZ;
 
     // Path height: knee level (~0.5 m above floor, camera at ~1.5 m height).
-    // Offset = cameraHeight - kneeHeight = 1.5 - 0.5 = 1.0 m.
-    // Increase to lower the path; decrease to raise it.
+    // Offset = cameraHeight - kneeHeight = 1.5 - 0.5 = 1.0 m. Computed from
+    // the *current* camera so the path stays at knee level even if the user
+    // raises/lowers the phone.
     const pathHeightOffsetM = 1.0;
-    final cameraWorldY = origin.worldY ?? origin.z;
+    final cameraWorldY = currentArPose.worldY ?? currentArPose.z;
     final floorWorldY = cameraWorldY - pathHeightOffsetM;
 
     // Converts a floorplan image point to ARKit world-space [worldX, worldY, worldZ].
@@ -759,8 +768,8 @@ class ArNavigationBloc extends Bloc<ArNavigationEvent, ArNavigationState> {
       final mathX = px;
       final mathY = -py;
 
-      final deltaMetersX = (mathX - refMathX) * effectiveMpp;
-      final deltaMetersY = (mathY - refMathY) * effectiveMpp;
+      final deltaMetersX = (mathX - anchorFpMathX) * effectiveMpp;
+      final deltaMetersY = (mathY - anchorFpMathY) * effectiveMpp;
 
       // CCW rotation by sumHeadingRad (inverse of _transformTrackedPose CW rotation)
       final arDeltaX = deltaMetersX * math.cos(sumHeadingRad) -
@@ -768,8 +777,8 @@ class ArNavigationBloc extends Bloc<ArNavigationEvent, ArNavigationState> {
       final arDeltaY = deltaMetersX * math.sin(sumHeadingRad) +
           deltaMetersY * math.cos(sumHeadingRad);
 
-      final targetMathX = originMathX + arDeltaX;
-      final targetMathY = originMathY + arDeltaY;
+      final targetMathX = anchorArMathX + arDeltaX;
+      final targetMathY = anchorArMathY + arDeltaY;
 
       // Math plane (East, North) → AR world: worldX = East, worldZ = −North
       final worldX = targetMathX;
