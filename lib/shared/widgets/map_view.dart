@@ -523,12 +523,62 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
   }
 
   List<DoorLocationEntity> _uniqueDoorLocations() {
+    final userPos = _getUserCoords();
+    if (userPos == Offset.zero) {
+      return const [];
+    }
+
     final seen = <String>{};
     final doors = <DoorLocationEntity>[];
+
+    // Get the destination point if there is a route
+    Offset? targetPos;
+    if (widget.route != null && widget.route!.steps.isNotEmpty) {
+      targetPos = Offset(
+        widget.route!.steps.last.to.x,
+        widget.route!.steps.last.to.y,
+      );
+    }
 
     for (final destination in widget.destinations) {
       final door = destination.doorLocation;
       if (door == null) continue;
+
+      // Filter out doors that are too close to any destination marker to prevent overlap/clutter
+      bool tooClose = false;
+      for (final d in widget.destinations) {
+        final dx = door.x - d.x;
+        final dy = door.y - d.y;
+        final dist = math.sqrt(dx * dx + dy * dy);
+        if (dist < 15.0) {
+          tooClose = true;
+          break;
+        }
+      }
+      if (tooClose) continue;
+
+      // Only show doors that are near the current location OR near the destination
+      final dxUser = door.x - userPos.dx;
+      final dyUser = door.y - userPos.dy;
+      final distUser = math.sqrt(dxUser * dxUser + dyUser * dyUser);
+
+      bool nearRouteEnds = false;
+      const double nearThreshold = 500.0; // Distance threshold in map coordinate units
+
+      if (distUser < nearThreshold) {
+        nearRouteEnds = true;
+      }
+
+      if (targetPos != null) {
+        final dxTarget = door.x - targetPos.dx;
+        final dyTarget = door.y - targetPos.dy;
+        final distTarget = math.sqrt(dxTarget * dxTarget + dyTarget * dyTarget);
+        if (distTarget < nearThreshold) {
+          nearRouteEnds = true;
+        }
+      }
+
+      if (!nearRouteEnds) continue;
 
       final key = '${door.x.toStringAsFixed(1)}:${door.y.toStringAsFixed(1)}';
       if (seen.add(key)) {
@@ -1228,7 +1278,7 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
     }
 
     if (isDoor) {
-      final size = (9.0 * zoom).clamp(4.0, 22.0);
+      final size = (6.0 * zoom).clamp(4.0, 16.0);
       return Positioned(
         left: pos.dx - size / 2,
         top: pos.dy - size / 2,

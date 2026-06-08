@@ -4,8 +4,6 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:smart_sense/features/destination/domain/entities/destination_entity.dart';
 import 'package:smart_sense/shared/widgets/map_markers.dart';
-
-/// Reusable widget for selecting a location on a floor plan
 class FloorPlanSelectorWidget extends StatefulWidget {
   final String? base64FloorPlan;
   final Function(double x, double y) onLocationSelected;
@@ -134,48 +132,9 @@ class _FloorPlanSelectorWidgetState extends State<FloorPlanSelectorWidget> {
 
   Offset? _selectedImageCoordinates;
 
-  List<DoorLocationEntity> _uniqueDoorLocations() {
-    final seen = <String>{};
-    final doors = <DoorLocationEntity>[];
 
-    for (final destination in widget.destinations) {
-      final door = destination.doorLocation;
-      if (door == null) continue;
 
-      final key = '${door.x.toStringAsFixed(1)}:${door.y.toStringAsFixed(1)}';
-      if (seen.add(key)) {
-        doors.add(door);
-      }
-    }
 
-    return doors;
-  }
-
-  Offset? _imageCoordinateToViewerPoint(double x, double y) {
-    if (_imageSize == null || _containerSize == null) return null;
-
-    final imageAspectRatio = _imageSize!.width / _imageSize!.height;
-    final containerAspectRatio = _containerSize!.width / _containerSize!.height;
-
-    double displayWidth;
-    double displayHeight;
-
-    if (imageAspectRatio > containerAspectRatio) {
-      displayWidth = _containerSize!.width;
-      displayHeight = _containerSize!.width / imageAspectRatio;
-    } else {
-      displayHeight = _containerSize!.height;
-      displayWidth = _containerSize!.height * imageAspectRatio;
-    }
-
-    final centerOffsetX = (_containerSize!.width - displayWidth) / 2;
-    final centerOffsetY = (_containerSize!.height - displayHeight) / 2;
-
-    return Offset(
-      centerOffsetX + x * (displayWidth / _imageSize!.width),
-      centerOffsetY + y * (displayHeight / _imageSize!.height),
-    );
-  }
 
   void _loadImageSize(Uint8List imageBytes) {
     if (_imageSize != null) return; // Prevent reloading
@@ -321,44 +280,7 @@ class _FloorPlanSelectorWidgetState extends State<FloorPlanSelectorWidget> {
               );
             },
           ),
-        if (widget.destinations.any((d) => d.doorLocation != null))
-          AnimatedBuilder(
-            animation: _transformationController,
-            builder: (context, child) {
-              final matrix = _transformationController.value;
-              final scale = matrix.getMaxScaleOnAxis();
 
-              return Stack(
-                children: _uniqueDoorLocations().map((door) {
-                  final viewerPoint = _imageCoordinateToViewerPoint(
-                    door.x,
-                    door.y,
-                  );
-                  if (viewerPoint == null) return const SizedBox.shrink();
-
-                  final transformedPosition = MatrixUtils.transformPoint(
-                    matrix,
-                    viewerPoint,
-                  );
-
-                  if (transformedPosition.dx.isNaN ||
-                      transformedPosition.dy.isNaN ||
-                      transformedPosition.dx.isInfinite ||
-                      transformedPosition.dy.isInfinite) {
-                    return const SizedBox.shrink();
-                  }
-
-                  final scaledSize = (12.0 * scale).clamp(5.0, 28.0);
-
-                  return Positioned(
-                    left: transformedPosition.dx - scaledSize / 2,
-                    top: transformedPosition.dy - scaledSize / 2,
-                    child: DoorLocationMarker(size: scaledSize),
-                  );
-                }).toList(),
-              );
-            },
-          ),
         // Confirm button
         if (_selectedPosition != null && _selectedImageCoordinates != null)
           Positioned(
