@@ -10,18 +10,22 @@ import 'package:smart_sense/core/utils/route_snap.dart';
 import 'package:smart_sense/injection.dart';
 import '../../domain/entities/ar_pose.dart';
 import '../../domain/entities/localized_pose.dart';
+import '../../domain/entities/wall_observation.dart';
 import '../../domain/models/audio_cue_direction.dart';
 import '../../domain/models/guidance_event_type.dart';
 import '../../domain/repositories/ar_pose_repository.dart';
+import '../../domain/repositories/wall_observation_repository.dart';
 import '../../domain/services/ar_pose_transformer.dart';
 import '../../domain/services/guidance_sound_service.dart';
 import '../../domain/services/heading_auto_corrector.dart';
 import '../../domain/services/path_tracking_service.dart';
+import '../../domain/services/wall_heading_corrector.dart';
 import 'ar_navigation_event.dart';
 import 'ar_navigation_state.dart';
 
 class ArNavigationBloc extends Bloc<ArNavigationEvent, ArNavigationState> {
   final ArPoseRepository _poseRepository;
+  final WallObservationRepository _wallRepository;
   final ArPoseTransformer _poseTransformer;
   final PathTrackingService _pathTracker;
   final GuidanceSoundService _soundService;
@@ -44,6 +48,8 @@ class ArNavigationBloc extends Bloc<ArNavigationEvent, ArNavigationState> {
   double _arTravelDistance = 0.0;
   ArPose? _lastPoseForDistance;
   final HeadingAutoCorrector _headingCorrector = HeadingAutoCorrector();
+  final WallHeadingCorrector _wallCorrector = WallHeadingCorrector();
+  Offset? _lastSnappedFpPose;
 
   static const double _headingLockThresholdDeg = 8.0;
   static const double _minimumOriginConfidence = 1.0;
@@ -55,14 +61,17 @@ class ArNavigationBloc extends Bloc<ArNavigationEvent, ArNavigationState> {
   static const Duration _maximumOriginWaitDuration = Duration(seconds: 3);
 
   StreamSubscription? _poseSubscription;
+  StreamSubscription? _wallSubscription;
 
   ArNavigationBloc({
     required ArPoseRepository poseRepository,
+    required WallObservationRepository wallRepository,
     required ArPoseTransformer poseTransformer,
     required PathTrackingService pathTracker,
     required GuidanceSoundService soundService,
     required LocationConfigService locationConfig,
   })  : _poseRepository = poseRepository,
+        _wallRepository = wallRepository,
         _poseTransformer = poseTransformer,
         _pathTracker = pathTracker,
         _soundService = soundService,
@@ -129,6 +138,9 @@ class ArNavigationBloc extends Bloc<ArNavigationEvent, ArNavigationState> {
     _poseSubscription = _poseRepository.watchPose().listen((pose) {
       add(UpdateArPose(pose));
     });
+
+    await _wallSubscription?.cancel();
+    _wallSubscription = _wallRepository.watch().listen(_onWallObservation);
 
     await _poseRepository.start();
     if (event.originArPose != null) {
@@ -239,6 +251,9 @@ class ArNavigationBloc extends Bloc<ArNavigationEvent, ArNavigationState> {
   ) async {
     await _poseSubscription?.cancel();
     _poseSubscription = null;
+    await _wallSubscription?.cancel();
+    _wallSubscription = null;
+    _lastSnappedFpPose = null;
     await _poseRepository.stop();
     _soundService.updateDirectionalGuidance(
       isActive: false,
@@ -369,6 +384,7 @@ class ArNavigationBloc extends Bloc<ArNavigationEvent, ArNavigationState> {
         localizedPose = localizedPose.copyWith(x: snapped.dx, y: snapped.dy);
       }
     }
+    _lastSnappedFpPose = Offset(localizedPose.x, localizedPose.y);
 
     // Auto-tune AR heading offset from observed corridor direction.
     // Compares the user's unsnapped floorplan walk vector against the nearest
@@ -805,10 +821,37 @@ class ArNavigationBloc extends Bloc<ArNavigationEvent, ArNavigationState> {
     );
   }
 
+  void _onWallObservation(WallObservation obs) {
+    if (!_locationConfig.wallHeadingCorrection) return;
+    if (_route == null ||
+        _referencePose == null ||
+        _originArPose == null ||
+        _lastSnappedFpPose == null) {
+      return;
+    }
+    final segments = _route!.routeNetworkSegments;
+    if (segments.isEmpty) return;
+
+    final suggestion = _wallCorrector.observe(
+      wallDominantYawDeg: obs.dominantWallYawDeg,
+      wallConfidence: obs.confidence,
+      wallSampleCount: obs.sampleCount,
+      snappedFpPose: _lastSnappedFpPose!,
+      segments: segments,
+      currentOffsetDeg: _locationConfig.arHeadingOffsetDeg,
+      referenceHeadingDeg: _referencePose!.heading,
+      captureHeadingDeg: _originArPose!.heading,
+    );
+    if (suggestion != null) {
+      unawaited(_locationConfig.setArHeadingOffsetDeg(suggestion));
+    }
+  }
+
   @override
   Future<void> close() {
     _locationConfig.unitNotifier.removeListener(_onUnitChanged);
     _poseSubscription?.cancel();
+    _wallSubscription?.cancel();
     _soundService.updateDirectionalGuidance(
       isActive: false,
       severity: 0,

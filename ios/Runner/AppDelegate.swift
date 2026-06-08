@@ -7,6 +7,7 @@ import UIKit
 private enum ArChannelContract {
   static let methodChannel = "unav/tracking/ar_method"
   static let eventChannel = "unav/tracking/ar_pose_stream"
+  static let wallEventChannel = "unav/tracking/ar_wall_stream"
   static let previewViewType = "unav/tracking/ar_preview_view"
   static let startSessionMethod = "startSession"
   static let stopSessionMethod = "stopSession"
@@ -41,6 +42,10 @@ private enum ArChannelContract {
   static let jpegBytesKey = "jpegBytes"
   static let capturePreviewMode = "capture"
   static let navigationPreviewMode = "navigation"
+  static let meshSupportedKey = "meshSupported"
+  static let wallDominantYawDegKey = "wallDominantYawDeg"
+  static let wallConfidenceKey = "wallConfidence"
+  static let wallSampleCountKey = "wallSampleCount"
 }
 
 private enum SpatialAudioChannelContract {
@@ -90,10 +95,28 @@ private final class IOSArTrackingBridge: NSObject, FlutterStreamHandler, ARSessi
 
   private let ciContext = CIContext()
   private var eventSink: FlutterEventSink?
+  fileprivate var wallEventSink: FlutterEventSink?
   private var isSessionRunning = false
   private var latestFrame: ARFrame?
   private let previewViews = NSHashTable<ARSCNView>.weakObjects()
   private let overlayRootNodeName = "unav_overlay_root"
+
+  // Wall detection state. LiDAR-only via scene reconstruction with
+  // classification (iOS 13.4+). Throttled emission so we don't drown the
+  // Flutter isolate in mesh recomputations. Storage uses the base ARAnchor
+  // type so the field works on iOS 13.0; only the read paths are guarded.
+  private var meshAnchors: [UUID: ARAnchor] = [:]
+  private var dirtyMeshAnchorIds: Set<UUID> = []
+  private var lastWallEmitAt: TimeInterval = 0
+  private static let wallEmitMinInterval: TimeInterval = 0.5
+  private static let wallSubsampleStride = 8
+
+  private static var meshClassificationAvailable: Bool {
+    if #available(iOS 13.4, *) {
+      return ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification)
+    }
+    return false
+  }
 
   override init() {
     super.init()
@@ -110,6 +133,11 @@ private final class IOSArTrackingBridge: NSObject, FlutterStreamHandler, ARSessi
       name: ArChannelContract.eventChannel,
       binaryMessenger: messenger
     )
+    let wallEventChannel = FlutterEventChannel(
+      name: ArChannelContract.wallEventChannel,
+      binaryMessenger: messenger
+    )
+    wallEventChannel.setStreamHandler(IOSArWallStreamHandler(bridge: self))
 
     methodChannel.setMethodCallHandler { [weak self] call, result in
       guard let self else {
@@ -122,6 +150,7 @@ private final class IOSArTrackingBridge: NSObject, FlutterStreamHandler, ARSessi
         result([
           ArChannelContract.backendKey: "iosArKit",
           ArChannelContract.isSupportedKey: ARWorldTrackingConfiguration.isSupported,
+          ArChannelContract.meshSupportedKey: IOSArTrackingBridge.meshClassificationAvailable,
         ])
       case ArChannelContract.startSessionMethod:
         self.startSession(result: result)
@@ -206,6 +235,20 @@ private final class IOSArTrackingBridge: NSObject, FlutterStreamHandler, ARSessi
     // sumHeadingDeg = reference.heading + captureHeading, which works for
     // any floorplan orientation and avoids compass/magnetometer interference.
     configuration.worldAlignment = .gravity
+
+    // Enable LiDAR scene reconstruction with classification when available
+    // (iOS 13.4+, LiDAR-equipped devices only). Powers wall-driven heading
+    // correction (see WallExtractor below). On non-LiDAR devices this is
+    // silently skipped and the system falls back to walk-direction-only
+    // auto-heading correction.
+    if #available(iOS 13.4, *),
+       ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification) {
+      configuration.sceneReconstruction = .meshWithClassification
+    }
+
+    meshAnchors.removeAll()
+    dirtyMeshAnchorIds.removeAll()
+    lastWallEmitAt = 0
     session.run(configuration, options: isSessionRunning ? [] : [.resetTracking, .removeExistingAnchors])
     isSessionRunning = true
     resumePreviewViews()
@@ -217,6 +260,70 @@ private final class IOSArTrackingBridge: NSObject, FlutterStreamHandler, ARSessi
     clearOverlay()
     session.pause()
     isSessionRunning = false
+    meshAnchors.removeAll()
+    dirtyMeshAnchorIds.removeAll()
+    lastWallEmitAt = 0
+  }
+
+  func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
+    guard #available(iOS 13.4, *) else { return }
+    var added = false
+    for anchor in anchors {
+      if anchor is ARMeshAnchor {
+        meshAnchors[anchor.identifier] = anchor
+        dirtyMeshAnchorIds.insert(anchor.identifier)
+        added = true
+      }
+    }
+    if added {
+      emitWallsIfDue()
+    }
+  }
+
+  func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
+    guard #available(iOS 13.4, *) else { return }
+    var updated = false
+    for anchor in anchors {
+      if anchor is ARMeshAnchor {
+        meshAnchors[anchor.identifier] = anchor
+        dirtyMeshAnchorIds.insert(anchor.identifier)
+        updated = true
+      }
+    }
+    if updated {
+      emitWallsIfDue()
+    }
+  }
+
+  func session(_ session: ARSession, didRemove anchors: [ARAnchor]) {
+    for anchor in anchors {
+      if meshAnchors.removeValue(forKey: anchor.identifier) != nil {
+        dirtyMeshAnchorIds.remove(anchor.identifier)
+      }
+    }
+  }
+
+  @available(iOS 13.4, *)
+  private func emitWallsIfDue() {
+    guard wallEventSink != nil else { return }
+    let now = CACurrentMediaTime()
+    if now - lastWallEmitAt < Self.wallEmitMinInterval { return }
+    lastWallEmitAt = now
+    dirtyMeshAnchorIds.removeAll()
+
+    let meshOnly = meshAnchors.values.compactMap { $0 as? ARMeshAnchor }
+    let observation = WallExtractor.extract(
+      anchors: meshOnly,
+      subsampleStride: Self.wallSubsampleStride
+    )
+    guard let observation = observation, let sink = wallEventSink else { return }
+
+    sink([
+      ArChannelContract.wallDominantYawDegKey: observation.dominantYawDeg,
+      ArChannelContract.wallConfidenceKey: observation.confidence,
+      ArChannelContract.wallSampleCountKey: observation.sampleCount,
+      ArChannelContract.timestampKey: Int(Date().timeIntervalSince1970 * 1000.0),
+    ])
   }
 
   private func captureCurrentFrame(result: FlutterResult) {
@@ -1200,3 +1307,179 @@ private final class IOSSpatialAudioBridge: NSObject {
     a + ((b - a) * t)
   }
 }
+
+// MARK: - Wall stream handler
+
+private final class IOSArWallStreamHandler: NSObject, FlutterStreamHandler {
+  private weak var bridge: IOSArTrackingBridge?
+
+  init(bridge: IOSArTrackingBridge) {
+    self.bridge = bridge
+  }
+
+  func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
+    bridge?.wallEventSink = events
+    return nil
+  }
+
+  func onCancel(withArguments arguments: Any?) -> FlutterError? {
+    bridge?.wallEventSink = nil
+    return nil
+  }
+}
+
+// MARK: - Wall extraction from ARMeshAnchor geometry
+
+private struct WallObservation {
+  let dominantYawDeg: Double
+  let confidence: Double
+  let sampleCount: Int
+}
+
+@available(iOS 13.4, *)
+private extension ARMeshGeometry {
+  /// ARKit exposes per-face classifications only as a raw `ARGeometrySource`
+  /// buffer. This helper mirrors Apple's sample-code pattern so we can read
+  /// `ARMeshClassification` values by face index.
+  func wallClassification(faceWithIndex index: Int) -> ARMeshClassification {
+    guard let classification = classification else { return .none }
+    let address = classification.buffer.contents().advanced(by: index)
+    let raw = Int(address.assumingMemoryBound(to: UInt8.self).pointee)
+    return ARMeshClassification(rawValue: raw) ?? .none
+  }
+}
+
+@available(iOS 13.4, *)
+private enum WallExtractor {
+  // 5 deg bins on a half-circle: walls have no front/back so we fold to [0, 180).
+  private static let binCount = 36
+  private static let binWidthDeg = 180.0 / Double(binCount)
+  // Reject near-horizontal faces (ceiling/floor that ARKit may misclassify
+  // as wall). |ny| < 0.7 ≈ surface within ~45 deg of vertical.
+  private static let verticalDotMax: Float = 0.7
+
+  static func extract(
+    anchors: [ARMeshAnchor],
+    subsampleStride: Int
+  ) -> WallObservation? {
+    var histogram = [Double](repeating: 0, count: binCount)
+    var totalWeight = 0.0
+    var sampleCount = 0
+    let stride = max(1, subsampleStride)
+
+    for anchor in anchors {
+      let geometry = anchor.geometry
+      let faceCount = geometry.faces.count
+      guard faceCount > 0 else { continue }
+
+      let vertexBuffer = geometry.vertices.buffer
+      let vertexStride = geometry.vertices.stride
+      let vertexOffset = geometry.vertices.offset
+      let vertexBase = vertexBuffer.contents().advanced(by: vertexOffset)
+
+      let indexBuffer = geometry.faces.buffer
+      let indexBytesPerIndex = geometry.faces.bytesPerIndex
+      let indicesPerFace = geometry.faces.indexCountPerPrimitive
+      let indexBase = indexBuffer.contents()
+
+      let anchorTransform = anchor.transform
+
+      var faceIndex = 0
+      while faceIndex < faceCount {
+        defer { faceIndex += stride }
+
+        guard geometry.wallClassification(faceWithIndex: faceIndex) == .wall
+        else { continue }
+
+        let faceOffset = faceIndex * indicesPerFace * indexBytesPerIndex
+        let i0 = readIndex(at: indexBase, byteOffset: faceOffset, bytesPerIndex: indexBytesPerIndex)
+        let i1 = readIndex(at: indexBase, byteOffset: faceOffset + indexBytesPerIndex, bytesPerIndex: indexBytesPerIndex)
+        let i2 = readIndex(at: indexBase, byteOffset: faceOffset + 2 * indexBytesPerIndex, bytesPerIndex: indexBytesPerIndex)
+
+        let v0 = readVertex(at: vertexBase, index: i0, stride: vertexStride)
+        let v1 = readVertex(at: vertexBase, index: i1, stride: vertexStride)
+        let v2 = readVertex(at: vertexBase, index: i2, stride: vertexStride)
+
+        let edge1 = v1 - v0
+        let edge2 = v2 - v0
+        let rawNormal = simd_cross(edge1, edge2)
+        let area = simd_length(rawNormal) * 0.5
+        if area < 1e-5 { continue }
+        let localNormal = rawNormal / (area * 2)
+
+        // Transform normal to world space (rotate, ignore translation).
+        let worldNormal = simd_normalize(
+          rotate(normal: localNormal, by: anchorTransform)
+        )
+
+        // Reject non-vertical faces.
+        if abs(worldNormal.y) > verticalDotMax { continue }
+
+        // Project onto the horizontal plane and yaw-ify. Walls have no
+        // front/back, so fold to [0, 180).
+        let nx = Double(worldNormal.x)
+        let nz = Double(worldNormal.z)
+        let planeLen = (nx * nx + nz * nz).squareRoot()
+        if planeLen < 1e-4 { continue }
+
+        var yawDeg = atan2(nx, -nz) * 180.0 / .pi
+        yawDeg = yawDeg.truncatingRemainder(dividingBy: 180.0)
+        if yawDeg < 0 { yawDeg += 180.0 }
+
+        let bin = min(binCount - 1, Int(yawDeg / binWidthDeg))
+        let weight = Double(area)
+        histogram[bin] += weight
+        totalWeight += weight
+        sampleCount += 1
+      }
+    }
+
+    guard sampleCount >= 50, totalWeight > 0 else { return nil }
+
+    var peakBin = 0
+    var peakWeight = 0.0
+    for (i, w) in histogram.enumerated() where w > peakWeight {
+      peakWeight = w
+      peakBin = i
+    }
+    let dominantYaw = (Double(peakBin) + 0.5) * binWidthDeg
+    let confidence = peakWeight / totalWeight
+
+    return WallObservation(
+      dominantYawDeg: dominantYaw,
+      confidence: confidence,
+      sampleCount: sampleCount
+    )
+  }
+
+  private static func readIndex(
+    at base: UnsafeMutableRawPointer,
+    byteOffset: Int,
+    bytesPerIndex: Int
+  ) -> Int {
+    let ptr = base.advanced(by: byteOffset)
+    switch bytesPerIndex {
+    case 2: return Int(ptr.assumingMemoryBound(to: UInt16.self).pointee)
+    case 4: return Int(ptr.assumingMemoryBound(to: UInt32.self).pointee)
+    default: return 0
+    }
+  }
+
+  private static func readVertex(
+    at base: UnsafeMutableRawPointer,
+    index: Int,
+    stride: Int
+  ) -> SIMD3<Float> {
+    let ptr = base.advanced(by: index * stride).assumingMemoryBound(to: Float.self)
+    return SIMD3<Float>(ptr[0], ptr[1], ptr[2])
+  }
+
+  private static func rotate(
+    normal: SIMD3<Float>,
+    by transform: simd_float4x4
+  ) -> SIMD3<Float> {
+    let rotated = transform * SIMD4<Float>(normal.x, normal.y, normal.z, 0)
+    return SIMD3<Float>(rotated.x, rotated.y, rotated.z)
+  }
+}
+

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_sense/core/network/api_client.dart';
@@ -83,6 +85,8 @@ import 'package:smart_sense/features/profile/domain/usecases/get_me_usecase.dart
 // AR Navigation
 import 'package:smart_sense/features/ar_navigation/domain/repositories/ar_pose_repository.dart';
 import 'package:smart_sense/features/ar_navigation/data/repositories/ar_pose_repository_impl.dart';
+import 'package:smart_sense/features/ar_navigation/domain/repositories/wall_observation_repository.dart';
+import 'package:smart_sense/features/ar_navigation/data/repositories/wall_observation_repository_impl.dart';
 import 'package:smart_sense/features/ar_navigation/domain/services/ar_pose_transformer.dart';
 import 'package:smart_sense/features/ar_navigation/domain/services/path_tracking_service.dart';
 import 'package:smart_sense/features/ar_navigation/domain/services/guidance_sound_service.dart';
@@ -303,6 +307,19 @@ Future<void> initializeDependencies() async {
 
   // AR Navigation Feature
   getIt.registerLazySingleton<ArPoseRepository>(() => ArPoseRepositoryImpl());
+  getIt.registerLazySingleton<WallObservationRepository>(
+    () => WallObservationRepositoryImpl(),
+  );
+  // Probe LiDAR/scene-reconstruction support once and cache on the config
+  // notifier so the offset settings UI can disable the wall-correction
+  // toggle on devices that don't support it.
+  unawaited(
+    getIt<WallObservationRepository>().isSupported().then(
+          (supported) => getIt<LocationConfigService>()
+              .wallDetectionSupportedNotifier
+              .value = supported,
+        ),
+  );
   getIt.registerLazySingleton(() => ArPoseTransformer());
   getIt.registerLazySingleton(() => PathTrackingService());
   getIt.registerLazySingleton(
@@ -311,6 +328,7 @@ Future<void> initializeDependencies() async {
   getIt.registerFactory(
     () => ArNavigationBloc(
       poseRepository: getIt<ArPoseRepository>(),
+      wallRepository: getIt<WallObservationRepository>(),
       poseTransformer: getIt<ArPoseTransformer>(),
       pathTracker: getIt<PathTrackingService>(),
       soundService: getIt<GuidanceSoundService>(),

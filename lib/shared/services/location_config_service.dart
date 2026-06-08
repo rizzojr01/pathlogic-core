@@ -31,6 +31,7 @@ class LocationConfigService {
   static const String _keyArHeadingOffsetDeg = 'ar_heading_offset_deg';
   static const String _keySnapToRoute = 'snap_to_route';
   static const String _keyAutoHeadingCorrection = 'auto_heading_correction';
+  static const String _keyWallHeadingCorrection = 'wall_heading_correction';
 
   LocationConfigService(this._prefs);
 
@@ -163,6 +164,28 @@ class LocationConfigService {
     autoHeadingCorrectionNotifier.value = value;
     await _prefs.setBool(_keyAutoHeadingCorrection, value);
   }
+
+  /// LiDAR-only: corrects AR heading offset directly from the dominant wall
+  /// direction observed by ARKit scene reconstruction. Stronger than the
+  /// walk-based [autoHeadingCorrection] because it does not require the
+  /// user to move, but only available on devices where
+  /// [wallDetectionSupportedNotifier] is true.
+  late final ValueNotifier<bool> wallHeadingCorrectionNotifier = ValueNotifier(
+    _prefs.getBool(_keyWallHeadingCorrection) ?? true,
+  );
+
+  bool get wallHeadingCorrection => wallHeadingCorrectionNotifier.value;
+
+  Future<void> setWallHeadingCorrection(bool value) async {
+    wallHeadingCorrectionNotifier.value = value;
+    await _prefs.setBool(_keyWallHeadingCorrection, value);
+  }
+
+  /// True when the native AR layer reports `meshSupported` in its
+  /// capabilities response (LiDAR-equipped iOS). Set asynchronously at
+  /// startup; defaults to false until that probe completes. Not persisted.
+  final ValueNotifier<bool> wallDetectionSupportedNotifier =
+      ValueNotifier<bool>(false);
 
   /// Get the selected place
   String get place => _prefs.getString(_keyPlace) ?? defaultPlace;

@@ -1,6 +1,7 @@
 class ArChannelContract {
   static const String methodChannel = 'unav/tracking/ar_method';
   static const String eventChannel = 'unav/tracking/ar_pose_stream';
+  static const String wallEventChannel = 'unav/tracking/ar_wall_stream';
 
   static const String startSessionMethod = 'startSession';
   static const String stopSessionMethod = 'stopSession';
@@ -35,4 +36,8 @@ class ArChannelContract {
   static const String waypointPulsePeriodSecKey = 'waypointPulsePeriodSec';
   static const String waypointPulseActiveKey = 'waypointPulseActive';
   static const String jpegBytesKey = 'jpegBytes';
+  static const String meshSupportedKey = 'meshSupported';
+  static const String wallDominantYawDegKey = 'wallDominantYawDeg';
+  static const String wallConfidenceKey = 'wallConfidence';
+  static const String wallSampleCountKey = 'wallSampleCount';
 }

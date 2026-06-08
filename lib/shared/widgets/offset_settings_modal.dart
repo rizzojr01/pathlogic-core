@@ -45,6 +45,8 @@ void showOffsetSettingsModal(BuildContext context) {
               _SnapToRouteRow(locationConfig: locationConfig),
               const SizedBox(height: 6),
               _AutoHeadingRow(locationConfig: locationConfig),
+              const SizedBox(height: 6),
+              _WallHeadingRow(locationConfig: locationConfig),
             ],
           ),
         ),
@@ -244,6 +246,57 @@ class _AutoHeadingRow extends StatelessWidget {
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
           ],
+        );
+      },
+    );
+  }
+}
+
+class _WallHeadingRow extends StatelessWidget {
+  final LocationConfigService locationConfig;
+
+  const _WallHeadingRow({required this.locationConfig});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ValueListenableBuilder<bool>(
+      valueListenable: locationConfig.wallDetectionSupportedNotifier,
+      builder: (context, supported, _) {
+        return ValueListenableBuilder<bool>(
+          valueListenable: locationConfig.wallHeadingCorrectionNotifier,
+          builder: (context, value, _) {
+            final disabledColor = theme.disabledColor;
+            return Row(
+              children: [
+                const SizedBox(width: 36),
+                Icon(
+                  Icons.crop_square,
+                  size: 16,
+                  color: supported ? null : disabledColor,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    supported
+                        ? 'Wall heading correction'
+                        : 'Wall heading correction (LiDAR only)',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: supported ? null : disabledColor,
+                    ),
+                  ),
+                ),
+                Switch(
+                  value: supported && value,
+                  onChanged: supported
+                      ? (v) => locationConfig.setWallHeadingCorrection(v)
+                      : null,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ],
+            );
+          },
         );
       },
     );
