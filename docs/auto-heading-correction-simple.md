@@ -1,4 +1,4 @@
-# Auto Heading Correction — Simple Explanation
+# Auto Heading Correction 
 
 The plain-language version. For the math-and-files-and-tunables version,
 see `docs/auto-heading-correction.md`.
