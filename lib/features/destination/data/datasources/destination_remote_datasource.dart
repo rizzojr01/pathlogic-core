@@ -29,6 +29,7 @@ class DestinationRemoteDataSourceImpl extends BaseRemoteDataSource
           'place': _locationConfigService.place,
           'device_id': getIt<DeviceIdService>().getDeviceId(),
           'include_coordinates': true,
+          'include_door_locations': true,
           'unav_multifloor': _locationConfigService.multiFloorNavigation,
           if (fcmToken != null) 'fcm_token': fcmToken,
         },

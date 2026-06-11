@@ -234,8 +234,111 @@ class DestinationMarker extends StatelessWidget {
     if (lowerName.contains('office')) return Icons.business;
     if (lowerName.contains('reception')) return Icons.desk;
     if (lowerName.contains('board') || lowerName.contains('meeting')) {
-      return Icons.meeting_room;
+      return Icons.groups;
     }
     return Icons.place;
+  }
+}
+
+/// Small, low-emphasis marker for door locations on the floor map.
+class DoorLocationMarker extends StatelessWidget {
+  final double size;
+  final Color? color;
+
+  const DoorLocationMarker({super.key, this.size = 16.0, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    // Use theme's secondary color as the default accent for doors to fit perfectly
+    // with the app's selected scheme and contrast with green/red markers.
+    final markerColor = color ?? theme.colorScheme.secondary;
+
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        padding: EdgeInsets.all(size * 0.12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface.withOpacity(0.35),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: markerColor.withOpacity(0.7),
+            width: (size / 12.0).clamp(0.6, 1.4),
+          ),
+        ),
+        child: CustomPaint(
+          painter: PerspectiveDoorPainter(color: markerColor),
+        ),
+      ),
+    );
+  }
+}
+
+/// Draws an open door in perspective (trapeze shape leaf) for high visual fidelity.
+class PerspectiveDoorPainter extends CustomPainter {
+  final Color color;
+
+  const PerspectiveDoorPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final strokeWidth = (size.width * 0.10).clamp(1.0, 2.5);
+    
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final fillPaint = Paint()
+      ..color = color.withValues(alpha: 0.15)
+      ..style = PaintingStyle.fill;
+
+    final w = size.width;
+    final h = size.height;
+
+    // Draw the door frame (top, right side)
+    // Left side is open/covered by the swung door leaf hinge.
+    final framePath = Path()
+      ..moveTo(w * 0.20, h * 0.85)
+      ..lineTo(w * 0.20, h * 0.20)
+      ..lineTo(w * 0.80, h * 0.20)
+      ..lineTo(w * 0.80, h * 0.85);
+    canvas.drawPath(framePath, paint);
+
+    // Draw the open door leaf (trapezoidal perspective shape swinging towards viewer)
+    // Hinged on the left (x = w * 0.20). Since it swings open towards the viewer:
+    // Left edge (hinge): y_top = h * 0.20, y_bottom = h * 0.85
+    // Right edge (open edge): y_top = h * 0.08, y_bottom = h * 0.95 (taller due to perspective)
+    final doorLeafPath = Path()
+      ..moveTo(w * 0.20, h * 0.20) // Hinge top
+      ..lineTo(w * 0.58, h * 0.08) // Open top (projected closer/taller)
+      ..lineTo(w * 0.58, h * 0.95) // Open bottom (projected closer/taller)
+      ..lineTo(w * 0.20, h * 0.85) // Hinge bottom
+      ..close();
+
+    // Fill the door leaf slightly
+    canvas.drawPath(doorLeafPath, fillPaint);
+    
+    // Draw the door leaf outline
+    canvas.drawPath(doorLeafPath, paint);
+
+    // Draw a small door knob on the open edge of the leaf
+    final knobPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(
+      Offset(w * 0.50, h * 0.52),
+      (w * 0.07).clamp(0.8, 1.8),
+      knobPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant PerspectiveDoorPainter oldDelegate) {
+    return oldDelegate.color != color;
   }
 }

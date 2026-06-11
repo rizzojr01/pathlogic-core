@@ -10,8 +10,8 @@ import '../../features/destination/domain/entities/destination_entity.dart';
 class DestinationsCacheService {
   final SharedPreferences _prefs;
 
-  static const String _cacheKeyPrefix = 'destinations_cache_';
-  static const String _cacheMetaKeyPrefix = 'destinations_meta_';
+  static const String _cacheKeyPrefix = 'destinations_cache_v2_';
+  static const String _cacheMetaKeyPrefix = 'destinations_meta_v2_';
 
   DestinationsCacheService(this._prefs);
 

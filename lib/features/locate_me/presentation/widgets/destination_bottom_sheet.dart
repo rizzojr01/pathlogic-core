@@ -248,7 +248,7 @@ class DestinationBottomSheet extends StatelessWidget {
     if (lowerName.contains('office')) return Icons.business;
     if (lowerName.contains('reception')) return Icons.desk;
     if (lowerName.contains('board') || lowerName.contains('meeting')) {
-      return Icons.meeting_room;
+      return Icons.groups;
     }
     if (lowerName.contains('men')) return Icons.male;
     if (lowerName.contains('women')) return Icons.female;

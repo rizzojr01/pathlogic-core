@@ -4,6 +4,8 @@ import '../../../../shared/services/location_config_service.dart';
 import '../../../locate_me/data/datasources/locate_me_remote_datasource.dart';
 import '../../../../shared/data/datasources/place_remote_datasource.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../domain/entities/destination_entity.dart';
+import '../../domain/repositories/destination_repository.dart';
 import 'floor_map_event.dart';
 import 'floor_map_state.dart';
 
@@ -22,6 +24,8 @@ class FloorMapBloc extends Bloc<FloorMapEvent, FloorMapState> {
       getIt<PlaceRemoteDataSource>();
   final LocateMeRemoteDataSource locateMeRemoteDataSource =
       getIt<LocateMeRemoteDataSource>();
+  final DestinationRepository destinationRepository =
+      getIt<DestinationRepository>();
 
   FloorMapBloc() : super(const FloorMapInitial()) {
     on<FloorMapInitialized>(_onInitialized);
@@ -90,11 +94,18 @@ class FloorMapBloc extends Bloc<FloorMapEvent, FloorMapState> {
         }
       }
 
+      final destinationsResult = await destinationRepository.searchDestinations(
+        '',
+      );
+      final destinations = destinationsResult.getOrElse(() => []);
+
       emit(
         FloorMapReady(
           base64FloorPlan: floorPlan,
           availableFloors: floors,
           selectedFloor: effectiveFloor,
+          destinations: _destinationsForFloor(destinations, effectiveFloor),
+          allDestinations: destinations,
         ),
       );
     } catch (e) {
@@ -128,6 +139,10 @@ class FloorMapBloc extends Bloc<FloorMapEvent, FloorMapState> {
         currentState.copyWith(
           selectedFloor: event.floor,
           base64FloorPlan: cached,
+          destinations: _destinationsForFloor(
+            currentState.allDestinations,
+            event.floor,
+          ),
         ),
       );
       return;
@@ -154,6 +169,10 @@ class FloorMapBloc extends Bloc<FloorMapEvent, FloorMapState> {
         currentState.copyWith(
           selectedFloor: event.floor,
           base64FloorPlan: floorPlan.base64Image,
+          destinations: _destinationsForFloor(
+            currentState.allDestinations,
+            event.floor,
+          ),
         ),
       );
     } catch (e) {
@@ -182,5 +201,15 @@ class FloorMapBloc extends Bloc<FloorMapEvent, FloorMapState> {
     Emitter<FloorMapState> emit,
   ) {
     // Handled in UI
+  }
+
+  List<DestinationEntity> _destinationsForFloor(
+    List<DestinationEntity> destinations,
+    String floor,
+  ) {
+    return destinations.where((destination) {
+      final destinationFloor = destination.floor;
+      return destinationFloor == null || destinationFloor == floor;
+    }).toList();
   }
 }

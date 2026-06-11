@@ -613,6 +613,7 @@ class _LocationInputViewState extends State<LocationInputView> with TickerProvid
                   } else if (state is FloorMapReady) {
                     return FloorPlanSelectorWidget(
                       base64FloorPlan: state.base64FloorPlan,
+                      destinations: state.destinations,
                       onLocationSelected: (x, y) =>
                           widget.onLocationSelected(x, y, state.selectedFloor),
                       confirmButtonText: widget.floorPlanConfirmText,
