@@ -152,8 +152,9 @@ class AppRouter {
               body: const Center(child: Text('Destination is required')),
             );
           }
-          return BlocProvider(
-            create: (context) => getIt<NavigationBloc>(),
+          final bloc = getIt<NavigationBloc>();
+          return BlocProvider.value(
+            value: bloc,
             child: RouteOverviewPage(
               destination: destination,
               imagePath: imagePath,

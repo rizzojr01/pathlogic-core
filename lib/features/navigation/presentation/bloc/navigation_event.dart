@@ -43,3 +43,7 @@ class InitializeNavigationEvent extends NavigationEvent {
     heading,
   ];
 }
+
+class ToggleShowDoorsNavigationEvent extends NavigationEvent {
+  const ToggleShowDoorsNavigationEvent();
+}

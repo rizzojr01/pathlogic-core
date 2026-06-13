@@ -40,6 +40,7 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
   }) : super(const NavigationInitial()) {
     on<InitializeNavigationEvent>(_onInitializeNavigation);
     on<RefreshHeadingAtStartEvent>(_onRefreshHeadingAtStart);
+    on<ToggleShowDoorsNavigationEvent>(_onToggleShowDoors);
   }
 
   void _onRefreshHeadingAtStart(
@@ -49,6 +50,16 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     final current = state;
     if (current is NavigationReady) {
       emit(current.copyWith(headingAtStart: event.heading));
+    }
+  }
+
+  void _onToggleShowDoors(
+    ToggleShowDoorsNavigationEvent event,
+    Emitter<NavigationState> emit,
+  ) {
+    final current = state;
+    if (current is NavigationReady) {
+      emit(current.copyWith(showDoors: !current.showDoors));
     }
   }
 
@@ -160,6 +171,8 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
         // ── Step 4: Load destinations from cache for all route floors ─────────
         List<DestinationEntity> destinations = [];
         final Map<String, List<DestinationEntity>> destinationsByFloor = {};
+        List<DoorLocationEntity> doors = [];
+        final Map<String, List<DoorLocationEntity>> doorsByFloor = {};
 
         // Normalise floor string for comparison: "17_floor" → "17"
         String normaliseFloor(String f) =>
@@ -187,36 +200,46 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
               unavMultifloor: locationConfigService.multiFloorNavigation,
             ),
           );
-          final allDests = result.getOrElse(() => []);
-          if (allDests.isEmpty) return [];
+          return result.fold(
+            (failure) => <DestinationEntity>[],
+            (res) {
+              doorsByFloor[floorKey] = res.doors;
+              if (floorKey == actualStartingFloor) {
+                doors = res.doors;
+              }
 
-          // Group by each destination's own floor field
-          final Map<String, List<DestinationEntity>> grouped = {};
-          for (final d in allDests) {
-            final normDest = d.floor != null
-                ? normaliseFloor(d.floor!)
-                : normaliseFloor(floorKey);
-            grouped.putIfAbsent(normDest, () => []).add(d);
-          }
+              final allDests = res.destinations;
+              if (allDests.isEmpty) return [];
 
-          // Cache each floor's slice
-          for (final entry in grouped.entries) {
-            final rawKey = route.multiFloorSteps
-                .map((s) => s.floor)
-                .firstWhere(
-                  (f) => normaliseFloor(f) == entry.key,
-                  orElse: () => floorKey,
+              // Group by each destination's own floor field
+              final Map<String, List<DestinationEntity>> grouped = {};
+              for (final d in allDests) {
+                final normDest = d.floor != null
+                    ? normaliseFloor(d.floor!)
+                    : normaliseFloor(floorKey);
+                grouped.putIfAbsent(normDest, () => []).add(d);
+              }
+
+              // Cache each floor's slice
+              for (final entry in grouped.entries) {
+                final rawKey = route.multiFloorSteps
+                    .map((s) => s.floor)
+                    .firstWhere(
+                      (f) => normaliseFloor(f) == entry.key,
+                      orElse: () => floorKey,
+                    );
+                destinationsCacheService.cacheDestinations(
+                  place: place,
+                  building: building,
+                  floor: rawKey,
+                  multiFloor: locationConfigService.multiFloorNavigation,
+                  destinations: entry.value,
                 );
-            await destinationsCacheService.cacheDestinations(
-              place: place,
-              building: building,
-              floor: rawKey,
-              multiFloor: locationConfigService.multiFloorNavigation,
-              destinations: entry.value,
-            );
-          }
+              }
 
-          return grouped[normaliseFloor(floorKey)] ?? [];
+              return grouped[normaliseFloor(floorKey)] ?? [];
+            },
+          );
         }
 
         await Future.wait(
@@ -290,6 +313,8 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
             destinations: destinations,
             floorPlansByFloor: floorPlansByFloor,
             destinationsByFloor: destinationsByFloor,
+            doors: doors,
+            doorsByFloor: doorsByFloor,
             headingAtStart: finalPlotHeading,
             capturedReferenceHeading: event.heading,
           ),

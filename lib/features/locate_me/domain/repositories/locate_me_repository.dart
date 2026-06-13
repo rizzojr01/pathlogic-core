@@ -6,6 +6,16 @@ import '../entities/floor_plan_entity.dart';
 import '../entities/user_position_entity.dart';
 import '../entities/localization_request_entity.dart';
 
+class DestinationsListResult {
+  final List<DestinationEntity> destinations;
+  final List<DoorLocationEntity> doors;
+
+  const DestinationsListResult({
+    required this.destinations,
+    required this.doors,
+  });
+}
+
 abstract class LocateMeRepository {
   /// Get floor plan image
   Future<Either<Failure, FloorPlanEntity>> getFloorPlan({
@@ -20,7 +30,7 @@ abstract class LocateMeRepository {
   );
 
   /// Get list of destinations on the floor
-  Future<Either<Failure, List<DestinationEntity>>> getDestinationsList({
+  Future<Either<Failure, DestinationsListResult>> getDestinationsList({
     required String building,
     required String floor,
     required String place,

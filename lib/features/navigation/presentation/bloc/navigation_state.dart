@@ -32,6 +32,13 @@ class NavigationReady extends NavigationState {
   /// floor key → destinations list (populated for multi-floor routes)
   final Map<String, List<DestinationEntity>> destinationsByFloor;
 
+  final List<DoorLocationEntity> doors;
+
+  /// floor key → doors list (populated for multi-floor routes)
+  final Map<String, List<DoorLocationEntity>> doorsByFloor;
+
+  final bool showDoors;
+
   final double? headingAtStart;
   final double? capturedReferenceHeading;
 
@@ -42,11 +49,17 @@ class NavigationReady extends NavigationState {
     this.destinations = const [],
     this.floorPlansByFloor = const {},
     this.destinationsByFloor = const {},
+    this.doors = const [],
+    this.doorsByFloor = const {},
+    this.showDoors = true,
     this.headingAtStart,
     this.capturedReferenceHeading,
   });
 
-  NavigationReady copyWith({double? headingAtStart}) {
+  NavigationReady copyWith({
+    double? headingAtStart,
+    bool? showDoors,
+  }) {
     return NavigationReady(
       currentLocation: currentLocation,
       route: route,
@@ -54,6 +67,9 @@ class NavigationReady extends NavigationState {
       destinations: destinations,
       floorPlansByFloor: floorPlansByFloor,
       destinationsByFloor: destinationsByFloor,
+      doors: doors,
+      doorsByFloor: doorsByFloor,
+      showDoors: showDoors ?? this.showDoors,
       headingAtStart: headingAtStart ?? this.headingAtStart,
       capturedReferenceHeading: capturedReferenceHeading,
     );
@@ -67,6 +83,9 @@ class NavigationReady extends NavigationState {
     destinations,
     floorPlansByFloor,
     destinationsByFloor,
+    doors,
+    doorsByFloor,
+    showDoors,
     headingAtStart,
     capturedReferenceHeading,
   ];

@@ -51,6 +51,8 @@ class NavigationPage extends StatefulWidget {
 }
 
 class _NavigationPageState extends State<NavigationPage> {
+  NavigationBloc? _bloc;
+
   @override
   void initState() {
     super.initState();
@@ -70,6 +72,20 @@ class _NavigationPageState extends State<NavigationPage> {
         RefreshHeadingAtStartEvent(widget.freshHeadingAtStart!),
       );
     }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _bloc ??= context.read<NavigationBloc>();
+  }
+
+  @override
+  void dispose() {
+    if (widget.skipInitialization) {
+      _bloc?.close();
+    }
+    super.dispose();
   }
 
 
@@ -94,6 +110,9 @@ class _NavigationPageState extends State<NavigationPage> {
               floorPlansByFloor: state.floorPlansByFloor,
               destinations: state.destinations,
               destinationsByFloor: state.destinationsByFloor,
+              doors: state.doors,
+              doorsByFloor: state.doorsByFloor,
+              showDoors: state.showDoors,
               onDestinationTap: (d) {}, // Handled internally by _NavigationMapView
               userPickedCoordinates: widget.userPickedCoordinates,
               headingAtStart: state.headingAtStart,
@@ -136,6 +155,9 @@ class _NavigationMapView extends StatefulWidget {
   final Map<String, String> floorPlansByFloor;
   final List<DestinationEntity> destinations;
   final Map<String, List<DestinationEntity>> destinationsByFloor;
+  final List<DoorLocationEntity> doors;
+  final Map<String, List<DoorLocationEntity>> doorsByFloor;
+  final bool showDoors;
   final Function(DestinationEntity)? onDestinationTap;
   final Map<String, dynamic>? userPickedCoordinates;
 
@@ -152,6 +174,9 @@ class _NavigationMapView extends StatefulWidget {
     this.floorPlansByFloor = const {},
     this.destinations = const [],
     this.destinationsByFloor = const {},
+    this.doors = const [],
+    this.doorsByFloor = const {},
+    this.showDoors = true,
     this.onDestinationTap,
     this.userPickedCoordinates,
     this.headingAtStart,
@@ -416,6 +441,17 @@ class _NavigationMapViewState extends State<_NavigationMapView>
     }).toList();
   }
 
+  List<DoorLocationEntity> get _doorsForSelectedFloor {
+    // 1. Best case: the floor is indexed directly in doorsByFloor.
+    List<DoorLocationEntity>? raw = widget.doorsByFloor[_selectedFloor];
+
+    // 2. Fallback: use widget.doors
+    if (raw == null || raw.isEmpty) {
+      raw = widget.doors;
+    }
+    return raw;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -444,6 +480,13 @@ class _NavigationMapViewState extends State<_NavigationMapView>
                 route: _routeForSelectedFloor,
                 floorPlanBase64: _floorPlanForSelected,
                 destinations: _destsForSelectedFloor,
+                doors: _doorsForSelectedFloor,
+                showDoors: widget.showDoors,
+                onToggleDoors: () {
+                  context.read<NavigationBloc>().add(
+                        const ToggleShowDoorsNavigationEvent(),
+                      );
+                },
                 onDestinationTap: (d) => _showDestinationBottomSheet(
                   context,
                   d,
@@ -506,7 +549,7 @@ class _NavigationMapViewState extends State<_NavigationMapView>
               // ── Offset Settings Button ────────────────────────────────────
               Positioned(
                 left: 16,
-                bottom: 112,
+                bottom: 192,
                 child: FloatingActionButton.small(
                   onPressed: () => showOffsetSettingsModal(context),
                   backgroundColor: theme.colorScheme.surface,

@@ -49,6 +49,7 @@ class LocateMeBloc extends Bloc<LocateMeEvent, LocateMeState> {
     on<SelectDestinationEvent>(_onSelectDestination);
     on<ClearSelectedDestinationEvent>(_onClearSelectedDestination);
     on<ResetLocateMeEvent>(_onReset);
+    on<ToggleShowDoorsEvent>(_onToggleShowDoors);
   }
 
   void _onCapturePhoto(
@@ -256,6 +257,7 @@ class LocateMeBloc extends Bloc<LocateMeEvent, LocateMeState> {
         emit(const LocateMeLoading(message: 'Loading places of interest...'));
 
         List<DestinationEntity>? destinations;
+        List<DoorLocationEntity> doors = [];
         String? destinationsError;
 
         // Check cache first
@@ -290,20 +292,23 @@ class LocateMeBloc extends Bloc<LocateMeEvent, LocateMeState> {
               destinationsError = failure.message;
             },
             (result) async {
-              destinations = result;
+              destinations = result.destinations;
+              doors = result.doors;
               // Cache the destinations for future use
-              if (result.isNotEmpty) {
+              if (result.destinations.isNotEmpty) {
                 await destinationsCacheService.cacheDestinations(
                   place: _place,
                   building: _building,
                   floor: effectiveFloor,
                   multiFloor: locationConfigService.multiFloorNavigation,
-                  destinations: result,
+                  destinations: result.destinations,
                 );
               }
             },
           );
         }
+
+
 
         if (destinations == null) {
           emit(
@@ -320,6 +325,7 @@ class LocateMeBloc extends Bloc<LocateMeEvent, LocateMeState> {
             floorPlan: floorPlan!,
             userPosition: userPosition.copyWith(floor: effectiveFloor),
             destinations: destinations!,
+            doors: doors,
             floor: effectiveFloor,
             heading: heading,
           ),
@@ -413,6 +419,7 @@ class LocateMeBloc extends Bloc<LocateMeEvent, LocateMeState> {
     emit(const LocateMeLoading(message: 'Loading places of interest...'));
 
     List<DestinationEntity>? destinations;
+    List<DoorLocationEntity> doors = [];
     String? destinationsError;
 
     // Check cache first
@@ -447,20 +454,23 @@ class LocateMeBloc extends Bloc<LocateMeEvent, LocateMeState> {
           destinationsError = failure.message;
         },
         (result) async {
-          destinations = result;
+          destinations = result.destinations;
+          doors = result.doors;
           // Cache the destinations for future use
-          if (result.isNotEmpty) {
+          if (result.destinations.isNotEmpty) {
             await destinationsCacheService.cacheDestinations(
               place: _place,
               building: _building,
               floor: effectiveFloor,
               multiFloor: locationConfigService.multiFloorNavigation,
-              destinations: result,
+              destinations: result.destinations,
             );
           }
         },
       );
     }
+
+
 
     if (destinations == null) {
       emit(
@@ -476,6 +486,7 @@ class LocateMeBloc extends Bloc<LocateMeEvent, LocateMeState> {
         floorPlan: floorPlan!,
         userPosition: userPosition.copyWith(floor: effectiveFloor),
         destinations: destinations!,
+        doors: doors,
         isManualLocalization: true,
         floor: effectiveFloor,
       ),
@@ -504,5 +515,15 @@ class LocateMeBloc extends Bloc<LocateMeEvent, LocateMeState> {
 
   void _onReset(ResetLocateMeEvent event, Emitter<LocateMeState> emit) {
     emit(const LocateMeInitial());
+  }
+
+  void _onToggleShowDoors(
+    ToggleShowDoorsEvent event,
+    Emitter<LocateMeState> emit,
+  ) {
+    if (state is LocateMeReady) {
+      final currentState = state as LocateMeReady;
+      emit(currentState.copyWith(showDoors: !currentState.showDoors));
+    }
   }
 }
