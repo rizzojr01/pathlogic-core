@@ -152,8 +152,10 @@ class AppRouter {
               body: const Center(child: Text('Destination is required')),
             );
           }
-          return BlocProvider(
-            create: (context) => getIt<NavigationBloc>(),
+          // BlocProvider.value never closes the bloc on dispose, so the
+          // singleton survives pushReplacement to /navigation.
+          return BlocProvider<NavigationBloc>.value(
+            value: getIt<NavigationBloc>(),
             child: RouteOverviewPage(
               destination: destination,
               imagePath: imagePath,
@@ -173,7 +175,7 @@ class AppRouter {
           Map<String, dynamic>? userPickedCoordinates;
           String? pickedFloor;
           double? heading;
-          NavigationBloc? existingBloc;
+          bool skipInitialization = false;
           double? freshHeadingAtStart;
 
           if (extra is Map<String, dynamic>) {
@@ -183,7 +185,10 @@ class AppRouter {
                 extra['manualCoordinates'] as Map<String, dynamic>?;
             pickedFloor = extra['pickedFloor'] as String?;
             heading = extra['heading'] as double?;
-            existingBloc = extra['existingBloc'] as NavigationBloc?;
+            // `existingBloc` is gone — handed off via getIt singleton instead.
+            // Callers signal "don't re-init" with skipInitialization: true.
+            skipInitialization =
+                (extra['skipInitialization'] as bool?) ?? false;
             freshHeadingAtStart = extra['freshHeadingAtStart'] as double?;
           } else if (extra is DestinationEntity) {
             destination = extra;
@@ -202,15 +207,13 @@ class AppRouter {
               userPickedCoordinates: userPickedCoordinates,
               pickedFloor: pickedFloor,
               heading: heading,
-              skipInitialization: existingBloc != null,
+              skipInitialization: skipInitialization,
               freshHeadingAtStart: freshHeadingAtStart,
             );
-            child = existingBloc != null
-                ? BlocProvider.value(value: existingBloc, child: page)
-                : BlocProvider(
-                    create: (_) => getIt<NavigationBloc>(),
-                    child: page,
-                  );
+            child = BlocProvider<NavigationBloc>.value(
+              value: getIt<NavigationBloc>(),
+              child: page,
+            );
           }
 
           // Smooth fade-in transition — the zoom effect comes from the overview

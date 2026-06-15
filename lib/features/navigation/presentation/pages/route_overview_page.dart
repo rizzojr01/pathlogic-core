@@ -282,7 +282,10 @@ class _OverviewContentState extends State<_OverviewContent>
       if (!mounted) return;
     }
 
-    final bloc = context.read<NavigationBloc>();
+    // Same NavigationBloc singleton is wired into /navigation via the
+    // router (BlocProvider.value), so we no longer need to pass the bloc
+    // through `extra`. `skipInitialization: true` tells NavigationPage
+    // the bloc already holds the route — don't re-fetch.
     context.pushReplacement(
       '/navigation',
       extra: {
@@ -291,7 +294,7 @@ class _OverviewContentState extends State<_OverviewContent>
         'manualCoordinates': widget.userPickedCoordinates,
         'pickedFloor': widget.pickedFloor,
         'heading': widget.capturedHeading,
-        'existingBloc': bloc,
+        'skipInitialization': true,
         'freshHeadingAtStart': freshHeading,
       },
     );
