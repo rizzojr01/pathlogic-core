@@ -90,6 +90,7 @@ class _FloorMapPageState extends State<FloorMapPage> {
                             } else if (state is FloorMapReady) {
                               return FloorPlanSelectorWidget(
                                 base64FloorPlan: state.base64FloorPlan,
+                                destinations: state.destinations,
                                 onLocationSelected: (x, y) {
                                   final destination = DestinationEntity(
                                     destinationId:

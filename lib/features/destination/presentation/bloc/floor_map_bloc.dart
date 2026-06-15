@@ -4,6 +4,8 @@ import '../../../../shared/services/location_config_service.dart';
 import '../../../locate_me/data/datasources/locate_me_remote_datasource.dart';
 import '../../../../shared/data/datasources/place_remote_datasource.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../domain/entities/destination_entity.dart';
+import '../../domain/repositories/destination_repository.dart';
 import 'floor_map_event.dart';
 import 'floor_map_state.dart';
 
@@ -22,6 +24,8 @@ class FloorMapBloc extends Bloc<FloorMapEvent, FloorMapState> {
       getIt<PlaceRemoteDataSource>();
   final LocateMeRemoteDataSource locateMeRemoteDataSource =
       getIt<LocateMeRemoteDataSource>();
+  final DestinationRepository destinationRepository =
+      getIt<DestinationRepository>();
 
   FloorMapBloc() : super(const FloorMapInitial()) {
     on<FloorMapInitialized>(_onInitialized);
@@ -57,17 +61,51 @@ class FloorMapBloc extends Bloc<FloorMapEvent, FloorMapState> {
 
       final effectiveFloor = event.initialFloor ?? locationConfigService.floor;
 
-      final floorPlan = await floorPlanCacheService.getCachedFloorPlanBase64(
+      final isStale = floorPlanCacheService.isCacheStale(
         place: locationConfigService.place,
         building: locationConfigService.building,
         floor: effectiveFloor,
       );
+      final cachedFloorPlan =
+          await floorPlanCacheService.getCachedFloorPlanBase64(
+        place: locationConfigService.place,
+        building: locationConfigService.building,
+        floor: effectiveFloor,
+      );
+      String? floorPlan = isStale ? null : cachedFloorPlan;
+
+      if (floorPlan == null) {
+        try {
+          final fetchedFloorPlan = await locateMeRemoteDataSource.getFloorPlan(
+            place: locationConfigService.place,
+            building: locationConfigService.building,
+            floor: effectiveFloor,
+          );
+          floorPlan = fetchedFloorPlan.base64Image;
+          await floorPlanCacheService.cacheFloorPlan(
+            place: locationConfigService.place,
+            building: locationConfigService.building,
+            floor: effectiveFloor,
+            base64Image: fetchedFloorPlan.base64Image,
+          );
+        } catch (_) {
+          if (cachedFloorPlan == null || cachedFloorPlan.isEmpty) rethrow;
+          floorPlan = cachedFloorPlan;
+        }
+      }
+
+      final destinationsResult = await destinationRepository.searchDestinations(
+        '',
+      );
+      final destinations = destinationsResult.getOrElse(() => []);
 
       emit(
         FloorMapReady(
           base64FloorPlan: floorPlan,
           availableFloors: floors,
           selectedFloor: effectiveFloor,
+          destinations: _destinationsForFloor(destinations, effectiveFloor),
+          allDestinations: destinations,
         ),
       );
     } catch (e) {
@@ -82,18 +120,29 @@ class FloorMapBloc extends Bloc<FloorMapEvent, FloorMapState> {
     final currentState = state;
     if (currentState is! FloorMapReady) return;
 
-    // Check cache first
-    final cached = await floorPlanCacheService.getCachedFloorPlanBase64(
+    // Check cache first, but refresh maps older than 24 hours.
+    final isStale = floorPlanCacheService.isCacheStale(
       place: locationConfigService.place,
       building: locationConfigService.building,
       floor: event.floor,
     );
+    final cachedFloorPlan = await floorPlanCacheService
+        .getCachedFloorPlanBase64(
+          place: locationConfigService.place,
+          building: locationConfigService.building,
+          floor: event.floor,
+        );
+    final cached = isStale ? null : cachedFloorPlan;
 
     if (cached != null) {
       emit(
         currentState.copyWith(
           selectedFloor: event.floor,
           base64FloorPlan: cached,
+          destinations: _destinationsForFloor(
+            currentState.allDestinations,
+            event.floor,
+          ),
         ),
       );
       return;
@@ -120,9 +169,22 @@ class FloorMapBloc extends Bloc<FloorMapEvent, FloorMapState> {
         currentState.copyWith(
           selectedFloor: event.floor,
           base64FloorPlan: floorPlan.base64Image,
+          destinations: _destinationsForFloor(
+            currentState.allDestinations,
+            event.floor,
+          ),
         ),
       );
     } catch (e) {
+      if (cachedFloorPlan != null && cachedFloorPlan.isNotEmpty) {
+        emit(
+          currentState.copyWith(
+            selectedFloor: event.floor,
+            base64FloorPlan: cachedFloorPlan,
+          ),
+        );
+        return;
+      }
       emit(FloorMapError(e.toString()));
     }
   }
@@ -139,5 +201,15 @@ class FloorMapBloc extends Bloc<FloorMapEvent, FloorMapState> {
     Emitter<FloorMapState> emit,
   ) {
     // Handled in UI
+  }
+
+  List<DestinationEntity> _destinationsForFloor(
+    List<DestinationEntity> destinations,
+    String floor,
+  ) {
+    return destinations.where((destination) {
+      final destinationFloor = destination.floor;
+      return destinationFloor == null || destinationFloor == floor;
+    }).toList();
   }
 }

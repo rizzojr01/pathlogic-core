@@ -2,18 +2,19 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:smart_sense/features/destination/domain/entities/destination_entity.dart';
 import 'package:smart_sense/shared/widgets/map_markers.dart';
-
-/// Reusable widget for selecting a location on a floor plan
 class FloorPlanSelectorWidget extends StatefulWidget {
   final String? base64FloorPlan;
   final Function(double x, double y) onLocationSelected;
+  final List<DestinationEntity> destinations;
   final String confirmButtonText;
 
   const FloorPlanSelectorWidget({
     super.key,
     required this.base64FloorPlan,
     required this.onLocationSelected,
+    this.destinations = const [],
     this.confirmButtonText = 'Confirm Location',
   });
 
@@ -130,6 +131,10 @@ class _FloorPlanSelectorWidgetState extends State<FloorPlanSelectorWidget> {
   }
 
   Offset? _selectedImageCoordinates;
+
+
+
+
 
   void _loadImageSize(Uint8List imageBytes) {
     if (_imageSize != null) return; // Prevent reloading
@@ -275,6 +280,7 @@ class _FloorPlanSelectorWidgetState extends State<FloorPlanSelectorWidget> {
               );
             },
           ),
+
         // Confirm button
         if (_selectedPosition != null && _selectedImageCoordinates != null)
           Positioned(

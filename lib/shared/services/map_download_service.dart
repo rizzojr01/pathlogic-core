@@ -90,7 +90,7 @@ class MapDownloadService {
 
   /// Downloads all floor maps for the given [place]/[building] combination.
   /// If [force] is true, it clears the old cache first. Otherwise, it only
-  /// downloads floors that are missing from the cache.
+  /// downloads floors that are missing from the cache or older than 24 hours.
   Future<MapDownloadResult> syncMapsForBuilding({
     required String place,
     required String building,
@@ -172,13 +172,21 @@ class MapDownloadService {
 
           if (floorKey.isEmpty || downloadUrl.isEmpty) continue;
 
-          // Check if already cached (unless force is true)
-          if (!force &&
+          // Check if already cached and still fresh (unless force is true).
+          // Cached maps older than 24 hours are refreshed automatically.
+          final hasFreshCache =
               _cache.hasCachedFloorPlan(
                 place: place,
                 building: building,
                 floor: floorKey,
-              )) {
+              ) &&
+              !_cache.isCacheStale(
+                place: place,
+                building: building,
+                floor: floorKey,
+              );
+
+          if (!force && hasFreshCache) {
             _logger.info(
               'MapDownloadService: Skipping $floorKey (already cached)',
             );
