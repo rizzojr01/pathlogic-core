@@ -113,6 +113,7 @@ class _NavigationPageState extends State<NavigationPage> {
               doors: state.doors,
               doorsByFloor: state.doorsByFloor,
               showDoors: state.showDoors,
+              showOnlyDoorsNearPath: state.showOnlyDoorsNearPath,
               onDestinationTap: (d) {}, // Handled internally by _NavigationMapView
               userPickedCoordinates: widget.userPickedCoordinates,
               headingAtStart: state.headingAtStart,
@@ -158,6 +159,7 @@ class _NavigationMapView extends StatefulWidget {
   final List<DoorLocationEntity> doors;
   final Map<String, List<DoorLocationEntity>> doorsByFloor;
   final bool showDoors;
+  final bool showOnlyDoorsNearPath;
   final Function(DestinationEntity)? onDestinationTap;
   final Map<String, dynamic>? userPickedCoordinates;
 
@@ -177,6 +179,7 @@ class _NavigationMapView extends StatefulWidget {
     this.doors = const [],
     this.doorsByFloor = const {},
     this.showDoors = true,
+    this.showOnlyDoorsNearPath = false,
     this.onDestinationTap,
     this.userPickedCoordinates,
     this.headingAtStart,
@@ -487,6 +490,12 @@ class _NavigationMapViewState extends State<_NavigationMapView>
                         const ToggleShowDoorsNavigationEvent(),
                       );
                 },
+                showOnlyDoorsNearPath: widget.showOnlyDoorsNearPath,
+                onToggleShowOnlyDoorsNearPath: () {
+                  context.read<NavigationBloc>().add(
+                        const ToggleShowOnlyDoorsNearPathNavigationEvent(),
+                      );
+                },
                 onDestinationTap: (d) => _showDestinationBottomSheet(
                   context,
                   d,
@@ -549,7 +558,7 @@ class _NavigationMapViewState extends State<_NavigationMapView>
               // ── Offset Settings Button ────────────────────────────────────
               Positioned(
                 left: 16,
-                bottom: 192,
+                bottom: 256,
                 child: FloatingActionButton.small(
                   onPressed: () => showOffsetSettingsModal(context),
                   backgroundColor: theme.colorScheme.surface,

@@ -28,6 +28,8 @@ class MapView extends StatefulWidget {
   final List<DoorLocationEntity> doors;
   final bool showDoors;
   final VoidCallback? onToggleDoors;
+  final bool showOnlyDoorsNearPath;
+  final VoidCallback? onToggleShowOnlyDoorsNearPath;
   final VoidCallback? onRetry;
   final VoidCallback? onRelocalize;
   final bool autoCenterOnUser;
@@ -49,6 +51,8 @@ class MapView extends StatefulWidget {
     this.doors = const [],
     this.showDoors = true,
     this.onToggleDoors,
+    this.showOnlyDoorsNearPath = false,
+    this.onToggleShowOnlyDoorsNearPath,
     this.onRetry,
     this.onRelocalize,
     this.autoCenterOnUser = true,
@@ -533,11 +537,11 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
     final doors = <DoorLocationEntity>[];
 
     final sourceDoors = widget.doors;
+    final route = widget.route;
 
     for (final door in sourceDoors) {
       // Filter out doors that coincide (overlap/are near in position) with any destination/POI marker
       bool coinciding = false;
-      bool hasNearbyPoi = false;
       
       for (final d in widget.destinations) {
         final dx = door.x - d.x;
@@ -546,18 +550,34 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
         
         if (dist < 5.0) { // Coinciding threshold to avoid overlapping markers
           coinciding = true;
+          break;
         }
-        if (dist < 500.0) { // Within building proximity threshold
-          hasNearbyPoi = true;
-        }
-        if (coinciding && hasNearbyPoi) break;
       }
       
       if (coinciding) continue;
-      
-      // If the door is completely isolated from all destinations, it is likely
-      // a blueprint legend symbol or schedule entry in the margins of the sheet.
-      if (!hasNearbyPoi && widget.destinations.isNotEmpty) continue;
+
+      // Filter to only show doors near/on path if enabled
+      if (widget.showOnlyDoorsNearPath && route != null && route.steps.isNotEmpty) {
+        double minDistance = double.infinity;
+        for (final step in route.steps) {
+          final dist = _distanceToSegment(
+            door.x,
+            door.y,
+            step.from.x,
+            step.from.y,
+            step.to.x,
+            step.to.y,
+          );
+          if (dist < minDistance) {
+            minDistance = dist;
+          }
+        }
+        
+        // Threshold of 120 units for proximity to the path
+        if (minDistance > 120.0) {
+          continue;
+        }
+      }
 
       final key = '${door.x.toStringAsFixed(1)}:${door.y.toStringAsFixed(1)}';
       if (seen.add(key)) {
@@ -566,6 +586,21 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
     }
 
     return doors;
+  }
+
+  double _distanceToSegment(double px, double py, double ax, double ay, double bx, double by) {
+    final l2 = (bx - ax) * (bx - ax) + (by - ay) * (by - ay);
+    if (l2 == 0) return math.sqrt((px - ax) * (px - ax) + (py - ay) * (py - ay));
+    
+    final t = ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / l2;
+    final clampedT = t.clamp(0.0, 1.0);
+    
+    final projectionX = ax + clampedT * (bx - ax);
+    final projectionY = ay + clampedT * (by - ay);
+    
+    final dx = px - projectionX;
+    final dy = py - projectionY;
+    return math.sqrt(dx * dx + dy * dy);
   }
 
   void _initializeView(Size containerSize, Size imageSize) {
@@ -1087,6 +1122,24 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
                     child: Icon(
                       widget.showDoors ? Icons.meeting_room : Icons.meeting_room_outlined,
                       color: widget.showDoors
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+
+              // Toggle Doors Near Path FAB
+              if (widget.route != null && widget.onToggleShowOnlyDoorsNearPath != null)
+                Positioned(
+                  left: 16,
+                  bottom: 192,
+                  child: FloatingActionButton.small(
+                    onPressed: widget.onToggleShowOnlyDoorsNearPath,
+                    backgroundColor: theme.colorScheme.surface,
+                    heroTag: 'map_toggle_doors_near_path_fab',
+                    child: Icon(
+                      Icons.alt_route,
+                      color: widget.showOnlyDoorsNearPath
                           ? theme.colorScheme.primary
                           : theme.colorScheme.onSurfaceVariant,
                     ),

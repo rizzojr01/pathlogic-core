@@ -41,6 +41,7 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     on<InitializeNavigationEvent>(_onInitializeNavigation);
     on<RefreshHeadingAtStartEvent>(_onRefreshHeadingAtStart);
     on<ToggleShowDoorsNavigationEvent>(_onToggleShowDoors);
+    on<ToggleShowOnlyDoorsNearPathNavigationEvent>(_onToggleShowOnlyDoorsNearPath);
   }
 
   void _onRefreshHeadingAtStart(
@@ -60,6 +61,16 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     final current = state;
     if (current is NavigationReady) {
       emit(current.copyWith(showDoors: !current.showDoors));
+    }
+  }
+
+  void _onToggleShowOnlyDoorsNearPath(
+    ToggleShowOnlyDoorsNearPathNavigationEvent event,
+    Emitter<NavigationState> emit,
+  ) {
+    final current = state;
+    if (current is NavigationReady) {
+      emit(current.copyWith(showOnlyDoorsNearPath: !current.showOnlyDoorsNearPath));
     }
   }
 

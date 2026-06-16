@@ -38,6 +38,7 @@ class NavigationReady extends NavigationState {
   final Map<String, List<DoorLocationEntity>> doorsByFloor;
 
   final bool showDoors;
+  final bool showOnlyDoorsNearPath;
 
   final double? headingAtStart;
   final double? capturedReferenceHeading;
@@ -52,6 +53,7 @@ class NavigationReady extends NavigationState {
     this.doors = const [],
     this.doorsByFloor = const {},
     this.showDoors = true,
+    this.showOnlyDoorsNearPath = false,
     this.headingAtStart,
     this.capturedReferenceHeading,
   });
@@ -59,6 +61,7 @@ class NavigationReady extends NavigationState {
   NavigationReady copyWith({
     double? headingAtStart,
     bool? showDoors,
+    bool? showOnlyDoorsNearPath,
   }) {
     return NavigationReady(
       currentLocation: currentLocation,
@@ -70,6 +73,7 @@ class NavigationReady extends NavigationState {
       doors: doors,
       doorsByFloor: doorsByFloor,
       showDoors: showDoors ?? this.showDoors,
+      showOnlyDoorsNearPath: showOnlyDoorsNearPath ?? this.showOnlyDoorsNearPath,
       headingAtStart: headingAtStart ?? this.headingAtStart,
       capturedReferenceHeading: capturedReferenceHeading,
     );
@@ -86,6 +90,7 @@ class NavigationReady extends NavigationState {
     doors,
     doorsByFloor,
     showDoors,
+    showOnlyDoorsNearPath,
     headingAtStart,
     capturedReferenceHeading,
   ];

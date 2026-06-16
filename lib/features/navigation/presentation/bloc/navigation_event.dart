@@ -47,3 +47,8 @@ class InitializeNavigationEvent extends NavigationEvent {
 class ToggleShowDoorsNavigationEvent extends NavigationEvent {
   const ToggleShowDoorsNavigationEvent();
 }
+
+class ToggleShowOnlyDoorsNearPathNavigationEvent extends NavigationEvent {
+  const ToggleShowOnlyDoorsNearPathNavigationEvent();
+}
+
