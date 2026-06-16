@@ -246,7 +246,11 @@ Future<void> initializeDependencies() async {
     ),
   );
   getIt.registerLazySingleton(() => GetRouteUseCase(getIt()));
-  getIt.registerFactory(
+  // Singleton so RouteOverview → NavigationPage hand-off survives
+  // `pushReplacement` without the owning BlocProvider closing it.
+  // Combined with BlocProvider.value in both routes (router), the bloc
+  // lives for the whole navigation session.
+  getIt.registerLazySingleton(
     () => NavigationBloc(
       getRouteUseCase: getIt(),
       getDestinationsUseCase: getIt(),

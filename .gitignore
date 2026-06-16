@@ -52,3 +52,4 @@ app.*.map.json
 .env
 
 /ar_temp
+unav_app/
