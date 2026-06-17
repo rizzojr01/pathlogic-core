@@ -86,7 +86,10 @@ class _RouteOverviewPageState extends State<RouteOverviewPage> {
               userPickedCoordinates: widget.userPickedCoordinates,
               pickedFloor: widget.pickedFloor,
               capturedHeading: widget.heading,
-              onBack: () => context.pop(),
+              onBack: () {
+                context.read<NavigationBloc>().close();
+                context.pop();
+              },
             );
           }
           return const SizedBox.shrink();

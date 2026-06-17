@@ -91,3 +91,8 @@ class NavigateToDestinationEvent extends LocateMeEvent {
 class ResetLocateMeEvent extends LocateMeEvent {
   const ResetLocateMeEvent();
 }
+
+/// Event to toggle showing doors on the map
+class ToggleShowDoorsEvent extends LocateMeEvent {
+  const ToggleShowDoorsEvent();
+}

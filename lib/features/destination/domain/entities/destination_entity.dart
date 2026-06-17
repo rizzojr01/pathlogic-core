@@ -20,7 +20,6 @@ class DestinationEntity extends BaseEntity {
   final double y;
   final String? floor;
   final String? address;
-  final DoorLocationEntity? doorLocation;
 
   const DestinationEntity({
     required this.destinationId,
@@ -29,7 +28,6 @@ class DestinationEntity extends BaseEntity {
     required this.y,
     this.floor,
     this.address,
-    this.doorLocation,
   });
 
   @override
@@ -43,6 +41,5 @@ class DestinationEntity extends BaseEntity {
     y,
     floor,
     address,
-    doorLocation,
   ];
 }

@@ -1,7 +1,6 @@
 import 'package:dartz/dartz.dart';
 
 import '../../../../core/error/failures.dart';
-import '../../../destination/domain/entities/destination_entity.dart';
 import '../../domain/entities/floor_plan_entity.dart';
 import '../../domain/entities/user_position_entity.dart';
 import '../../domain/entities/localization_request_entity.dart';
@@ -51,7 +50,7 @@ class LocateMeRepositoryImpl implements LocateMeRepository {
   }
 
   @override
-  Future<Either<Failure, List<DestinationEntity>>> getDestinationsList({
+  Future<Either<Failure, DestinationsListResult>> getDestinationsList({
     required String building,
     required String floor,
     required String place,
@@ -68,7 +67,10 @@ class LocateMeRepositoryImpl implements LocateMeRepository {
         includeCoordinates: includeCoordinates,
         unavMultifloor: unavMultifloor,
       );
-      return Right(result);
+      return Right(DestinationsListResult(
+        destinations: result.destinations,
+        doors: result.doors,
+      ));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

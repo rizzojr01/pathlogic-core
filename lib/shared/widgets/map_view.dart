@@ -25,6 +25,11 @@ class MapView extends StatefulWidget {
   final String floorPlanBase64;
   final Function(DestinationEntity)? onDestinationTap;
   final List<DestinationEntity> destinations;
+  final List<DoorLocationEntity> doors;
+  final bool showDoors;
+  final VoidCallback? onToggleDoors;
+  final bool showOnlyDoorsNearPath;
+  final VoidCallback? onToggleShowOnlyDoorsNearPath;
   final VoidCallback? onRetry;
   final VoidCallback? onRelocalize;
   final bool autoCenterOnUser;
@@ -43,6 +48,11 @@ class MapView extends StatefulWidget {
     required this.floorPlanBase64,
     this.onDestinationTap,
     this.destinations = const [],
+    this.doors = const [],
+    this.showDoors = true,
+    this.onToggleDoors,
+    this.showOnlyDoorsNearPath = false,
+    this.onToggleShowOnlyDoorsNearPath,
     this.onRetry,
     this.onRelocalize,
     this.autoCenterOnUser = true,
@@ -523,62 +533,51 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
   }
 
   List<DoorLocationEntity> _uniqueDoorLocations() {
-    final userPos = _getUserCoords();
-    if (userPos == Offset.zero) {
-      return const [];
-    }
-
     final seen = <String>{};
     final doors = <DoorLocationEntity>[];
 
-    // Get the destination point if there is a route
-    Offset? targetPos;
-    if (widget.route != null && widget.route!.steps.isNotEmpty) {
-      targetPos = Offset(
-        widget.route!.steps.last.to.x,
-        widget.route!.steps.last.to.y,
-      );
-    }
+    final sourceDoors = widget.doors;
+    final route = widget.route;
 
-    for (final destination in widget.destinations) {
-      final door = destination.doorLocation;
-      if (door == null) continue;
-
-      // Filter out doors that are too close to any destination marker to prevent overlap/clutter
-      bool tooClose = false;
+    for (final door in sourceDoors) {
+      // Filter out doors that coincide (overlap/are near in position) with any destination/POI marker
+      bool coinciding = false;
+      
       for (final d in widget.destinations) {
         final dx = door.x - d.x;
         final dy = door.y - d.y;
         final dist = math.sqrt(dx * dx + dy * dy);
-        if (dist < 15.0) {
-          tooClose = true;
+        
+        if (dist < 5.0) { // Coinciding threshold to avoid overlapping markers
+          coinciding = true;
           break;
         }
       }
-      if (tooClose) continue;
+      
+      if (coinciding) continue;
 
-      // Only show doors that are near the current location OR near the destination
-      final dxUser = door.x - userPos.dx;
-      final dyUser = door.y - userPos.dy;
-      final distUser = math.sqrt(dxUser * dxUser + dyUser * dyUser);
-
-      bool nearRouteEnds = false;
-      const double nearThreshold = 500.0; // Distance threshold in map coordinate units
-
-      if (distUser < nearThreshold) {
-        nearRouteEnds = true;
-      }
-
-      if (targetPos != null) {
-        final dxTarget = door.x - targetPos.dx;
-        final dyTarget = door.y - targetPos.dy;
-        final distTarget = math.sqrt(dxTarget * dxTarget + dyTarget * dyTarget);
-        if (distTarget < nearThreshold) {
-          nearRouteEnds = true;
+      // Filter to only show doors near/on path if enabled
+      if (widget.showOnlyDoorsNearPath && route != null && route.steps.isNotEmpty) {
+        double minDistance = double.infinity;
+        for (final step in route.steps) {
+          final dist = _distanceToSegment(
+            door.x,
+            door.y,
+            step.from.x,
+            step.from.y,
+            step.to.x,
+            step.to.y,
+          );
+          if (dist < minDistance) {
+            minDistance = dist;
+          }
+        }
+        
+        // Threshold of 120 units for proximity to the path
+        if (minDistance > 120.0) {
+          continue;
         }
       }
-
-      if (!nearRouteEnds) continue;
 
       final key = '${door.x.toStringAsFixed(1)}:${door.y.toStringAsFixed(1)}';
       if (seen.add(key)) {
@@ -587,6 +586,21 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
     }
 
     return doors;
+  }
+
+  double _distanceToSegment(double px, double py, double ax, double ay, double bx, double by) {
+    final l2 = (bx - ax) * (bx - ax) + (by - ay) * (by - ay);
+    if (l2 == 0) return math.sqrt((px - ax) * (px - ax) + (py - ay) * (py - ay));
+    
+    final t = ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / l2;
+    final clampedT = t.clamp(0.0, 1.0);
+    
+    final projectionX = ax + clampedT * (bx - ax);
+    final projectionY = ay + clampedT * (by - ay);
+    
+    final dx = px - projectionX;
+    final dy = py - projectionY;
+    return math.sqrt(dx * dx + dy * dy);
   }
 
   void _initializeView(Size containerSize, Size imageSize) {
@@ -968,21 +982,22 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
                 return Stack(
                   children: [
                     // Doors
-                    ..._uniqueDoorLocations().map(
-                      (door) => _buildMarker(
-                        door.x,
-                        door.y,
-                        scaleX,
-                        scaleY,
-                        centerOffsetX,
-                        centerOffsetY,
-                        zoomScale,
-                        rotationAngle,
-                        displayWidth,
-                        displayHeight,
-                        isDoor: true,
+                    if (widget.showDoors)
+                      ..._uniqueDoorLocations().map(
+                        (door) => _buildMarker(
+                          door.x,
+                          door.y,
+                          scaleX,
+                          scaleY,
+                          centerOffsetX,
+                          centerOffsetY,
+                          zoomScale,
+                          rotationAngle,
+                          displayWidth,
+                          displayHeight,
+                          isDoor: true,
+                        ),
                       ),
-                    ),
 
                     // POIs
                     ...widget.destinations.map(
@@ -1094,6 +1109,42 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
                   child: Icon(Icons.palette_outlined, color: theme.colorScheme.primary),
                 ),
               ),
+
+              // Toggle Doors FAB
+              if (widget.onToggleDoors != null)
+                Positioned(
+                  left: 16,
+                  bottom: 128,
+                  child: FloatingActionButton.small(
+                    onPressed: widget.onToggleDoors,
+                    backgroundColor: theme.colorScheme.surface,
+                    heroTag: 'map_toggle_doors_fab',
+                    child: Icon(
+                      widget.showDoors ? Icons.meeting_room : Icons.meeting_room_outlined,
+                      color: widget.showDoors
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+
+              // Toggle Doors Near Path FAB
+              if (widget.route != null && widget.onToggleShowOnlyDoorsNearPath != null)
+                Positioned(
+                  left: 16,
+                  bottom: 192,
+                  child: FloatingActionButton.small(
+                    onPressed: widget.onToggleShowOnlyDoorsNearPath,
+                    backgroundColor: theme.colorScheme.surface,
+                    heroTag: 'map_toggle_doors_near_path_fab',
+                    child: Icon(
+                      Icons.alt_route,
+                      color: widget.showOnlyDoorsNearPath
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
 
               if (_isSearching)
                 MapSearchOverlay(
@@ -1278,7 +1329,7 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
     }
 
     if (isDoor) {
-      final size = (6.0 * zoom).clamp(4.0, 16.0);
+      final size = (10.0 * zoom).clamp(8.0, 24.0);
       return Positioned(
         left: pos.dx - size / 2,
         top: pos.dy - size / 2,

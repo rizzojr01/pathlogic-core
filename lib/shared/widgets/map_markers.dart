@@ -261,11 +261,11 @@ class DoorLocationMarker extends StatelessWidget {
         height: size,
         padding: EdgeInsets.all(size * 0.12),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface.withOpacity(0.35),
+          color: theme.colorScheme.surface, // Fully opaque background
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
-            color: markerColor.withOpacity(0.7),
-            width: (size / 12.0).clamp(0.6, 1.4),
+            color: markerColor, // Solid color for better visibility
+            width: (size / 10.0).clamp(1.0, 2.0),
           ),
         ),
         child: CustomPaint(

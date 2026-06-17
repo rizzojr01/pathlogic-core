@@ -5,9 +5,20 @@ import '../../../../shared/services/device_id_service.dart';
 import '../../../../shared/services/fcm_service.dart';
 import '../../../../injection.dart';
 import '../../../destination/data/models/destination_model.dart';
+import '../../../destination/domain/entities/destination_entity.dart';
 import '../models/floor_plan_model.dart';
 import '../models/user_position_model.dart';
 import '../models/localization_request_model.dart';
+
+class DestinationsListModel {
+  final List<DestinationModel> destinations;
+  final List<DoorLocationEntity> doors;
+
+  const DestinationsListModel({
+    required this.destinations,
+    required this.doors,
+  });
+}
 
 abstract class LocateMeRemoteDataSource {
   /// Get floor plan image from the backend
@@ -21,7 +32,7 @@ abstract class LocateMeRemoteDataSource {
   Future<UserPositionModel> localizeUser(LocalizationRequestModel request);
 
   /// Get list of destinations for the floor
-  Future<List<DestinationModel>> getDestinationsList({
+  Future<DestinationsListModel> getDestinationsList({
     required String building,
     required String floor,
     required String place,
@@ -90,7 +101,7 @@ class LocateMeRemoteDataSourceImpl extends BaseRemoteDataSource
   }
 
   @override
-  Future<List<DestinationModel>> getDestinationsList({
+  Future<DestinationsListModel> getDestinationsList({
     required String building,
     required String floor,
     required String place,
@@ -98,7 +109,7 @@ class LocateMeRemoteDataSourceImpl extends BaseRemoteDataSource
     bool includeCoordinates = true,
     bool unavMultifloor = false,
   }) async {
-    return executeCall<List<DestinationModel>>(() async {
+    return executeCall<DestinationsListModel>(() async {
       final fcmToken = getIt<FcmService>().token;
       final response = await post(
         ApiRoutes.getDestinationsList,
@@ -112,7 +123,27 @@ class LocateMeRemoteDataSourceImpl extends BaseRemoteDataSource
           if (fcmToken != null) 'fcm_token': fcmToken,
         },
       );
-      return DestinationModel.fromJsonList(response);
+      print('DEBUG: getDestinationsList response keys: ${response.keys}');
+      if (response['destinations'] != null) {
+        final destsList = response['destinations'] as List<dynamic>;
+        print('DEBUG: fetched ${destsList.length} destinations');
+        if (destsList.isNotEmpty) {
+          print('DEBUG: First destination JSON: ${destsList.first}');
+        }
+      }
+
+      final destsList = (response['destinations'] as List<dynamic>? ?? [])
+          .map((e) => DestinationModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      final doorsList = (response['door_locations'] as List<dynamic>? ?? [])
+          .map((e) => DoorLocationEntity(
+                x: ((e as Map<String, dynamic>)['x'] as num).toDouble(),
+                y: (e['y'] as num).toDouble(),
+              ))
+          .toList();
+
+      return DestinationsListModel(destinations: destsList, doors: doorsList);
     }, errorMessage: 'Failed to get destinations list');
   }
 }

@@ -44,41 +44,49 @@ class LocateMeReady extends LocateMeState {
   final FloorPlanEntity floorPlan;
   final UserPositionEntity userPosition;
   final List<DestinationEntity> destinations;
+  final List<DoorLocationEntity> doors;
   final DestinationEntity? selectedDestination;
   final bool isManualLocalization;
   final String? floor;
   final double? heading;
+  final bool showDoors;
 
   const LocateMeReady({
     required this.floorPlan,
     required this.userPosition,
     required this.destinations,
+    required this.doors,
     this.selectedDestination,
     this.isManualLocalization = false,
     this.floor,
     this.heading,
+    this.showDoors = true,
   });
 
   LocateMeReady copyWith({
     FloorPlanEntity? floorPlan,
     UserPositionEntity? userPosition,
     List<DestinationEntity>? destinations,
+    List<DoorLocationEntity>? doors,
     DestinationEntity? selectedDestination,
     bool? isManualLocalization,
     bool clearSelectedDestination = false,
     String? floor,
     double? heading,
+    bool? showDoors,
   }) {
     return LocateMeReady(
       floorPlan: floorPlan ?? this.floorPlan,
       userPosition: userPosition ?? this.userPosition,
       destinations: destinations ?? this.destinations,
+      doors: doors ?? this.doors,
       isManualLocalization: isManualLocalization ?? this.isManualLocalization,
       selectedDestination: clearSelectedDestination
           ? null
           : (selectedDestination ?? this.selectedDestination),
       floor: floor ?? this.floor,
       heading: heading ?? this.heading,
+      showDoors: showDoors ?? this.showDoors,
     );
   }
 
@@ -87,10 +95,12 @@ class LocateMeReady extends LocateMeState {
     floorPlan,
     userPosition,
     destinations,
+    doors,
     selectedDestination,
     isManualLocalization,
     floor,
     heading,
+    showDoors,
   ];
 }
 

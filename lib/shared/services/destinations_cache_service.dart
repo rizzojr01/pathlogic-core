@@ -43,26 +43,7 @@ class DestinationsCacheService {
     required String floor,
     required bool multiFloor,
   }) {
-    final cacheKey = _getCacheKey(place, building, floor, multiFloor);
-    final jsonString = _prefs.getString(cacheKey);
-
-    if (jsonString != null && jsonString.isNotEmpty) {
-      try {
-        final jsonList = jsonDecode(jsonString) as List<dynamic>;
-        return jsonList
-            .map((e) => DestinationModel.fromJson(e as Map<String, dynamic>))
-            .toList();
-      } catch (e) {
-        // Invalid cached data, clear it
-        clearCache(
-          place: place,
-          building: building,
-          floor: floor,
-          multiFloor: multiFloor,
-        );
-        return null;
-      }
-    }
+    // Temporary bypass for testing
     return null;
   }
 
@@ -73,9 +54,8 @@ class DestinationsCacheService {
     required String floor,
     required bool multiFloor,
   }) {
-    final cacheKey = _getCacheKey(place, building, floor, multiFloor);
-    final cached = _prefs.getString(cacheKey);
-    return cached != null && cached.isNotEmpty;
+    // Temporary bypass for testing
+    return false;
   }
 
   /// Cache destinations list

@@ -8,14 +8,12 @@ class DestinationModel extends DestinationEntity {
     required super.y,
     super.floor,
     super.address,
-    super.doorLocation,
   });
 
   factory DestinationModel.fromJson(Map<String, dynamic> json) {
     // Support both x/y and latitude/longitude field names
     final xValue = json['x'] ?? json['latitude'] ?? 0;
     final yValue = json['y'] ?? json['longitude'] ?? 0;
-    final doorLocationJson = json['door_location'] as Map<String, dynamic>?;
 
     return DestinationModel(
       destinationId: json['id'] as String,
@@ -24,12 +22,6 @@ class DestinationModel extends DestinationEntity {
       y: (yValue as num).toDouble(),
       floor: json['floor'] as String?,
       address: json['address'] as String?,
-      doorLocation: doorLocationJson == null
-          ? null
-          : DoorLocationEntity(
-              x: (doorLocationJson['x'] as num).toDouble(),
-              y: (doorLocationJson['y'] as num).toDouble(),
-            ),
     );
   }
 
@@ -41,11 +33,6 @@ class DestinationModel extends DestinationEntity {
       'y': y,
       'floor': floor,
       'address': address,
-      if (doorLocation != null)
-        'door_location': {
-          'x': doorLocation!.x,
-          'y': doorLocation!.y,
-        },
     };
   }
 
@@ -57,7 +44,6 @@ class DestinationModel extends DestinationEntity {
       y: entity.y,
       floor: entity.floor,
       address: entity.address,
-      doorLocation: entity.doorLocation,
     );
   }
 

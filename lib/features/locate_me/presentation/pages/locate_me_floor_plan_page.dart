@@ -78,6 +78,13 @@ class _LocateMeFloorPlanPageState extends State<LocateMeFloorPlanPage> {
                       userLocation: state.userPosition,
                       floorPlanBase64: state.floorPlan.base64Image,
                       destinations: state.destinations,
+                      doors: state.doors,
+                      showDoors: state.showDoors,
+                      onToggleDoors: () {
+                        context.read<LocateMeBloc>().add(
+                          const ToggleShowDoorsEvent(),
+                        );
+                      },
                       onDestinationTap: (destination) =>
                           _showDestinationBottomSheet(context, destination),
                       onRetry: () {
