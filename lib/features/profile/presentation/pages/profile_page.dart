@@ -12,6 +12,7 @@ import '../../../../shared/presentation/bloc/location_settings_state.dart';
 import '../../../../shared/services/destinations_cache_service.dart';
 import '../../../../shared/services/location_config_service.dart';
 import '../../../../shared/widgets/auto_detect_location_widget.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../../theme/theme_bloc.dart';
 import '../../../../theme/widgets/color_customizer.dart';
 
@@ -399,6 +400,89 @@ class ProfilePage extends StatelessWidget {
           ),
           child: Column(
             children: [
+              // Koyeb Base URL Toggle
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer.withValues(
+                          alpha: 0.3,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.cloud_outlined,
+                        color: theme.colorScheme.primary,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Use Koyeb Server',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            locationConfig.useKoyebBaseUrl
+                                ? 'Active: ${dotenv.env['KOYEB_BASE_URL'] ?? 'Koyeb URL'}'
+                                : 'Active: ${dotenv.env['BASE_URL'] ?? 'Local URL'}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch.adaptive(
+                      value: locationConfig.useKoyebBaseUrl,
+                      onChanged: (value) async {
+                        await locationConfig.setUseKoyebBaseUrl(value);
+                        setState(() {});
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).clearSnackBars();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                value
+                                    ? 'Switched to Koyeb API Server'
+                                    : 'Switched to Local API Server',
+                              ),
+                              backgroundColor: theme.colorScheme.primary,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      activeColor: theme.colorScheme.primary,
+                    ),
+                  ],
+                ),
+              ),
+              Divider(
+                height: 1,
+                indent: 68,
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+              ),
               // Use Sample Image Toggle
               Padding(
                 padding: const EdgeInsets.symmetric(
