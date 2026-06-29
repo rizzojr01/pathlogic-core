@@ -452,7 +452,7 @@ class ProfilePage extends StatelessWidget {
                     ),
                     Switch.adaptive(
                       value: locationConfig.useKoyebBaseUrl,
-                      onChanged: (value) async {
+                    onChanged: (value) async {
                         await locationConfig.setUseKoyebBaseUrl(value);
                         setState(() {});
                         if (context.mounted) {
@@ -461,8 +461,8 @@ class ProfilePage extends StatelessWidget {
                             SnackBar(
                               content: Text(
                                 value
-                                    ? 'Switched to Koyeb API Server'
-                                    : 'Switched to Local API Server',
+                                    ? 'Switched to Koyeb API Server. Checking session...'
+                                    : 'Switched to Local API Server. Checking session...',
                               ),
                               backgroundColor: theme.colorScheme.primary,
                               behavior: SnackBarBehavior.floating,
@@ -471,6 +471,8 @@ class ProfilePage extends StatelessWidget {
                               ),
                             ),
                           );
+                          // Trigger auth check to see if we have an existing session on the new backend
+                          context.read<AuthBloc>().add(AuthCheckRequested());
                         }
                       },
                       activeColor: theme.colorScheme.primary,
