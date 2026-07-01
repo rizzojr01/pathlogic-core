@@ -1,8 +1,18 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:smart_sense/injection.dart';
+import 'package:smart_sense/shared/services/location_config_service.dart';
 
 class ApiRoutes {
   // Base URL
-  static String get baseUrl => dotenv.get('BASE_URL');
+  static String get baseUrl {
+    try {
+      final useKoyeb = getIt<LocationConfigService>().useKoyebBaseUrl;
+      if (useKoyeb) {
+        return dotenv.env['KOYEB_BASE_URL'] ?? dotenv.get('BASE_URL');
+      }
+    } catch (_) {}
+    return dotenv.get('BASE_URL');
+  }
 
   // Auth Endpoints
   static const String login = '/auth/login';

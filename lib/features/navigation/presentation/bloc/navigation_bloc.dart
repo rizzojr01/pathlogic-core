@@ -333,4 +333,12 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
       },
     );
   }
+
+  @override
+  Future<void> close() {
+    if (getIt.isRegistered<NavigationBloc>()) {
+      getIt.resetLazySingleton<NavigationBloc>();
+    }
+    return super.close();
+  }
 }

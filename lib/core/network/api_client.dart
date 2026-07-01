@@ -26,6 +26,11 @@ class ApiClient {
     _setupCertificateBypass();
   }
 
+  void updateBaseUrl(String newUrl) {
+    _dio.options.baseUrl = newUrl;
+    _logger.info('ApiClient: Base URL updated to: $newUrl');
+  }
+
   void _setupCertificateBypass() {
     _dio.httpClientAdapter = IOHttpClientAdapter(
       createHttpClient: () {
