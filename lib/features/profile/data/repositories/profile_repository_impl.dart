@@ -19,7 +19,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     try {
       final token = authLocalDataSource.getToken();
       if (token == null) {
-        return const Left<Failure, UserEntity>(
+        return Left<Failure, UserEntity>(
           CacheFailure('Not authenticated'),
         );
       }
@@ -39,7 +39,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     try {
       final token = authLocalDataSource.getToken();
       if (token == null) {
-        return const Left<Failure, UserEntity>(
+        return Left<Failure, UserEntity>(
           CacheFailure('Not authenticated'),
         );
       }

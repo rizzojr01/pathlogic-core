@@ -59,6 +59,7 @@ dependencies:
   image: ^4.3.0
   firebase_crashlytics: ^4.3.10
   flutter_tts: ^4.2.5
+  sentry_flutter: ^9.23.0
 
 dev_dependencies:
   flutter_test:

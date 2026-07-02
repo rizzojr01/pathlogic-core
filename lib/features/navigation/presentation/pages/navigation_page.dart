@@ -51,8 +51,6 @@ class NavigationPage extends StatefulWidget {
 }
 
 class _NavigationPageState extends State<NavigationPage> {
-  NavigationBloc? _bloc;
-
   @override
   void initState() {
     super.initState();
@@ -72,20 +70,6 @@ class _NavigationPageState extends State<NavigationPage> {
         RefreshHeadingAtStartEvent(widget.freshHeadingAtStart!),
       );
     }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _bloc ??= context.read<NavigationBloc>();
-  }
-
-  @override
-  void dispose() {
-    if (widget.skipInitialization) {
-      _bloc?.close();
-    }
-    super.dispose();
   }
 
 

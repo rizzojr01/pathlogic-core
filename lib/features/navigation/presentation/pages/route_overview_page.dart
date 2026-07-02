@@ -87,7 +87,6 @@ class _RouteOverviewPageState extends State<RouteOverviewPage> {
               pickedFloor: widget.pickedFloor,
               capturedHeading: widget.heading,
               onBack: () {
-                context.read<NavigationBloc>().close();
                 context.pop();
               },
             );

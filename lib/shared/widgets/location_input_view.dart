@@ -14,6 +14,7 @@ import '../../core/services/speech_service.dart';
 import '../../routes/app_router.dart';
 
 import '../../core/utils/logger.dart';
+import '../../core/error/failures.dart';
 
 import '../../features/destination/presentation/bloc/floor_map_bloc.dart';
 import '../../features/destination/presentation/bloc/floor_map_event.dart';
@@ -231,7 +232,7 @@ class _LocationInputViewState extends State<LocationInputView> with TickerProvid
       if (mounted) {
         setState(() {
           _isInitializing = false;
-          _errorMessage = 'Error initializing camera: $e';
+          _errorMessage = Failure.sanitize('Error initializing camera: $e');
         });
       }
     }
@@ -290,7 +291,7 @@ class _LocationInputViewState extends State<LocationInputView> with TickerProvid
           if (mounted) {
             snackbar.CustomSnackBar.show(
               context,
-              message: 'Failed to capture image: ${e.toString()}',
+              message: Failure.sanitize('Failed to capture image: ${e.toString()}'),
               type: snackbar.SnackBarType.error,
             );
           }
@@ -354,7 +355,7 @@ class _LocationInputViewState extends State<LocationInputView> with TickerProvid
       if (mounted) {
         snackbar.CustomSnackBar.show(
           context,
-          message: 'Failed to capture image: ${e.toString()}',
+          message: Failure.sanitize('Failed to capture image: ${e.toString()}'),
           type: snackbar.SnackBarType.error,
         );
       }

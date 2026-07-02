@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:smart_sense/app.dart';
 import 'package:smart_sense/core/constants/api_routes.dart';
 import 'package:smart_sense/injection.dart';
@@ -54,7 +55,16 @@ void main() async {
   // per-floor API calls. Runs fire-and-forget — won't block app startup.
   _syncMapsInBackground();
 
-  runApp(const App());
+  final sentryDsn = dotenv.env['SENTRY_DSN'] ?? '';
+
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = sentryDsn;
+      // Set tracesSampleRate to 1.0 to capture 100% of transactions for performance monitoring.
+      options.tracesSampleRate = 1.0;
+    },
+    appRunner: () => runApp(const App()),
+  );
 }
 
 /// Fire-and-forget map sync. Downloads all floor maps for the currently
