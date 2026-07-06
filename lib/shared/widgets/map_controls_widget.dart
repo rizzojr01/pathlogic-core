@@ -5,6 +5,8 @@ class MapControls extends StatelessWidget {
   final VoidCallback onSearch;
   final VoidCallback onReset;
   final VoidCallback? onSnapRotation;
+  final VoidCallback? onToggleNorthLock;
+  final bool isNorthLocked;
   final VoidCallback? onRelocalize;
   final bool isAtInitialRotation;
   final IconData? resetIcon;
@@ -17,6 +19,8 @@ class MapControls extends StatelessWidget {
     required this.onSearch,
     required this.onReset,
     this.onSnapRotation,
+    this.onToggleNorthLock,
+    this.isNorthLocked = false,
     this.onRelocalize,
     this.isAtInitialRotation = true,
     this.resetIcon,
@@ -44,6 +48,18 @@ class MapControls extends StatelessWidget {
             onPressed: onSnapRotation ?? () {},
             tooltip: 'Snap to route direction',
           ),
+          if (onToggleNorthLock != null) ...[
+            const SizedBox(height: 12),
+            MapControlButton(
+              icon: isNorthLocked
+                  ? Icons.screen_lock_rotation
+                  : Icons.screen_rotation,
+              onPressed: onToggleNorthLock!,
+              tooltip: isNorthLocked
+                  ? 'Map locked to north — tap to follow heading'
+                  : 'Lock map to north',
+            ),
+          ],
           const SizedBox(height: 12),
           MapControlButton(
             icon: resetIcon ?? Icons.my_location,

@@ -5,7 +5,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter_compass/flutter_compass.dart';
 import 'package:fuzzy/fuzzy.dart';
 
 import '../../features/destination/domain/entities/destination_entity.dart';
@@ -18,6 +17,7 @@ import '../../injection.dart';
 import '../services/map_download_service.dart';
 import 'map_search_overlay.dart';
 import '../services/location_config_service.dart';
+import '../services/heading_fusion_service.dart';
 
 class MapView extends StatefulWidget {
   final dynamic userLocation;
@@ -97,18 +97,28 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
   bool _hasRecenteredOnUser = false;
   bool _hasSetInitialRotation = false;
 
-  // Compass tracking and smooth interpolation
-  StreamSubscription<CompassEvent>? _compassSubscription;
+  // Heading tracking and smooth interpolation.
+  // Heading comes from [HeadingFusionService] (gyroscope + magnetometer fusion),
+  // NOT the raw magnetometer — this is what keeps the map orientation stable and
+  // repeatable when walking around indoors and returning to the same spot.
+  final HeadingFusionService _headingFusion = HeadingFusionService();
+  StreamSubscription<double>? _compassSubscription;
   double? _initialCompassHeading; // heading (degrees) when tracking started
-  double _smoothedHeading = 0.0; // EMA-filtered heading, avoids noise spikes
+  double _smoothedHeading = 0.0; // latest fused heading (already low-passed)
   double _targetRotation = 0.0; // The rotation we want to reach (radians)
   late Ticker _rotationTicker;
-  bool _headingInitialized = false;
   bool _compassActive = false; // true once tracking starts
   Timer? _compassStartTimer;
 
+  // Lock-map-north: when true the map is frozen upright (rotation 0) and no
+  // longer follows the heading; the user marker arrow rotates instead to show
+  // which way the user faces. Toggled from the map controls.
+  bool _lockNorth = false;
+  // Live heading delta (degrees) from the tracking baseline. Used to rotate the
+  // user marker while the map is north-locked.
+  double _liveHeadingDeltaDeg = 0.0;
+
   // Configuration for rotation stability
-  static const double _baseCompassAlpha = 0.20; // Smoothing factor for sensor
   static const double _tickerLerpFactor =
       0.35; // Speed of inter-frame smoothing
 
@@ -217,72 +227,43 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
 
   // ── compass ────────────────────────────────────────────────────────────────
 
-  /// Starts compass tracking after [delay].
+  /// Starts heading tracking after [delay].
   /// Saves the heading at the moment tracking begins as the baseline,
   /// then applies: mapRotation = initialRouteRotation − deltaHeading.
+  ///
+  /// The heading source is [HeadingFusionService] (gyroscope-driven, magnetometer
+  /// anchored). Because the gyroscope is immune to indoor magnetic interference,
+  /// returning to the same physical direction yields the same heading — so the
+  /// map orientation is repeatable instead of "sometimes wrong".
   void _startCompassTracking({
     Duration delay = Duration.zero,
     double? seedHeading,
   }) {
     _compassStartTimer?.cancel();
+    _headingFusion.start(); // idempotent; keeps the fused heading running
     _compassStartTimer = Timer(delay, () {
       if (!mounted) return;
       _compassSubscription?.cancel();
-      // Pre-seed the compass baseline:
+      // Pre-seed the baseline:
       // • If seedHeading is provided (capture-time heading), use it directly.
       //   This anchors the delta calculation to the exact moment the photo was
       //   taken, so any phone movement DURING map loading is compensated for.
-      // • Otherwise fall back to null, which means the first compass event
-      //   will become the baseline (legacy behaviour).
+      // • Otherwise fall back to null, which means the first fused heading
+      //   sample will become the baseline.
+      // A restart (relocalize / floor switch / snap) re-anchors the baseline to
+      // [seedHeading] instead of carrying a stale heading from the previous
+      // session — the fused stream itself keeps running for gyro continuity.
       _initialCompassHeading = seedHeading;
-      _compassSubscription = FlutterCompass.events?.listen((event) {
-        final heading = event.heading;
-        if (heading == null || !mounted) return;
-
+      _compassSubscription = _headingFusion.headingStream.listen((heading) {
+        if (!mounted) return;
         if (heading.isNaN || heading.isInfinite) return;
 
-        // ── Exponential moving average (low-pass) filter ────────────────────
-        // Raw magnetometer is very noisy indoors. EMA keeps the value stable
-        // when stationary while still tracking real rotation smoothly.
-        if (!_headingInitialized) {
-          _smoothedHeading = heading;
-          _headingInitialized = true;
-        } else {
-          // ── Adaptive Alpha ─────────────────────────────────────────────────
-          // Smaller movements are filtered more aggressively for stability.
-          // Larger, faster movements use a higher alpha for responsiveness.
-          final rawArc = _shortestArc(heading - _smoothedHeading).abs();
-          double alpha = _baseCompassAlpha;
-          if (rawArc < 3) {
-            alpha =
-                _baseCompassAlpha *
-                0.3; // Very slow changes = maximum stability
-          } else if (rawArc > 10) {
-            alpha =
-                _baseCompassAlpha *
-                2.5; // Intentional turns = high responsiveness
-          }
+        // The fusion service already low-passes the signal, so no extra EMA is
+        // needed — using the fused value directly removes the previous filter
+        // lag that made a quick return-to-heading look wrong before catching up.
+        _smoothedHeading = heading;
 
-          // If accuracy is poor, aggressively dampen the signal
-          final accuracy = event.accuracy;
-          if (accuracy != null && (accuracy > 15 || accuracy < 0)) {
-            alpha *= 0.4;
-          }
-
-          // Interpolate using shortest arc to handle the 0↔360° wrap correctly
-          final arc = _shortestArc(heading - _smoothedHeading);
-
-          // ── Dead Zone ──────────────────────────────────────────────────────
-          // If the movement is extremely small (noise), ignore it to prevent
-          // the "jittering" effect when the phone is stationary.
-          if (arc.abs() < 0.8) return; // Ignore movements < 0.8 degrees
-
-          _smoothedHeading += alpha * arc;
-          _smoothedHeading = _smoothedHeading % 360;
-          if (_smoothedHeading < 0) _smoothedHeading += 360;
-        }
-
-        // Capture the baseline heading on the very first event
+        // Capture the baseline heading on the very first sample.
         _initialCompassHeading ??= _smoothedHeading;
         if (_initialCompassHeading!.isNaN) {
           _initialCompassHeading = _smoothedHeading;
@@ -290,10 +271,16 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
 
         // How many degrees has the user physically rotated since tracking began?
         final delta = _shortestArc(_smoothedHeading - _initialCompassHeading!);
+        _liveHeadingDeltaDeg = delta;
 
         // Update the target rotation. The Ticker will smoothly interpolate
         // _manualRotation to reach this value.
-        _targetRotation = _initialRouteRotation - delta * math.pi / 180.0;
+        //
+        // North-locked: keep the map upright (rotation 0) and let the marker
+        // arrow carry the heading instead. Otherwise the map follows heading.
+        _targetRotation = _lockNorth
+            ? 0.0
+            : _initialRouteRotation - delta * math.pi / 180.0;
 
         if (mounted) setState(() => _compassActive = true);
       });
@@ -370,6 +357,23 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
     if (widget.route != null) {
       _startCompassTracking(seedHeading: widget.capturedReferenceHeading);
     }
+  }
+
+  /// Toggles the north-lock. When enabling, the map animates upright (rotation
+  /// 0) and stops following heading; when disabling, it immediately resumes
+  /// heading-follow from the current fused heading.
+  void _toggleNorthLock() {
+    setState(() {
+      _lockNorth = !_lockNorth;
+      if (_lockNorth) {
+        _targetRotation = 0.0; // ticker animates the map to upright
+      } else {
+        // Resume heading-follow right away instead of waiting for the next
+        // sensor sample.
+        _targetRotation =
+            _initialRouteRotation - _liveHeadingDeltaDeg * math.pi / 180.0;
+      }
+    });
   }
 
   /// Smoothly animates rotation AND position back to the initial view.
@@ -495,6 +499,7 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
   void dispose() {
     _compassStartTimer?.cancel();
     _compassSubscription?.cancel();
+    _headingFusion.dispose();
     _rotationTicker.dispose();
     _routeAnimationController.dispose();
     _snapRotationController.dispose();
@@ -1065,11 +1070,16 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
                   _recenterOnUser(containerSize, _imageSize!);
                 },
                 onSnapRotation: () {
+                  // Snapping to the route direction implies following heading
+                  // again, so clear the north-lock to avoid the two fighting.
+                  _lockNorth = false;
                   _snapToInitialRotation();
                   _startCompassTracking(
                     seedHeading: widget.capturedReferenceHeading,
                   );
                 },
+                onToggleNorthLock: _toggleNorthLock,
+                isNorthLocked: _lockNorth,
                 isAtInitialRotation:
                     (_manualRotation - _initialRouteRotation).abs() < 0.01,
                 onRelocalize: widget.onRelocalize,
@@ -1318,12 +1328,16 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
         child: UserPositionMarker(
           size: size,
           isCheckpoint: isCheckpoint,
-          // Compass ON (heading-up): map already rotated so user faces screen-up.
-          // Arrow must be 0° — always pointing straight up, never moves.
+          // North-locked: map is frozen upright, so the arrow carries the
+          //   heading — live facing = localized angle + heading delta.
+          // Compass ON (heading-up): map already rotated so user faces screen-up;
+          //   arrow stays at 0° (straight up).
           // Compass OFF: arrow glued to map rotation (original behaviour).
-          orientationDegrees: _compassActive
-              ? 0.0
-              : (angle + 90) + (rotation * 180 / math.pi),
+          orientationDegrees: _lockNorth
+              ? (angle + _liveHeadingDeltaDeg + 90) + (rotation * 180 / math.pi)
+              : _compassActive
+                  ? 0.0
+                  : (angle + 90) + (rotation * 180 / math.pi),
         ),
       );
     }
