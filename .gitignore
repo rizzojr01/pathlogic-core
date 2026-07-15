@@ -53,3 +53,10 @@ app.*.map.json
 
 /ar_temp
 unav_app/
+
+# Distribution certificates and keys
+cert.pem
+distribution.csr
+distribution.key
+distribution.p12
+ios_distribution.cer
