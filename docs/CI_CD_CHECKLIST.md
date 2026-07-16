@@ -14,11 +14,13 @@
 
 | Item | Status | Notes |
 |------|--------|-------|
-| App ID for `com.pathlogic.core` | ❓ | Check if it exists under the org account |
-| Distribution Certificate (Apple Distribution) | ❌ Need | Must be created under TaggedWeb Inc. (old cert won't work) |
-| App Store Provisioning Profile | ❌ Need | Must be created for `com.pathlogic.core` under org |
+| App ID for `com.pathlogic.core` | ✅ Have | Already deployed manually under org |
+| Distribution Certificate (Apple Distribution) | ✅ Have | `temp/ios_distribution.cer` |
+| Private Key | ✅ Have | `temp/distribution.key` |
+| .p12 Certificate Bundle | ✅ Have | `temp/distribution.p12` |
+| App Store Provisioning Profile | ✅ Have | `temp/twebpathlogic.mobileprovision` |
+| Push Notification enabled in App ID | ✅ Have | `aps-environment` = `production` in entitlements |
 | App Store Connect API Key | ❌ Need | For fastlane to upload to TestFlight |
-| Push Notification enabled in App ID | ❓ | Verify in App IDs section |
 
 ### 2. GitHub Secrets
 
@@ -64,43 +66,38 @@
 
 ## Step-by-Step Setup Order
 
-### Step 1: Apple Developer Portal
-1. [ ] Login to developer.apple.com with org account
-2. [ ] Verify `com.pathlogic.core` App ID exists (create if not)
-3. [ ] Enable Push Notifications capability on the App ID
-4. [ ] Create Distribution Certificate (Apple Distribution type)
-5. [ ] Create App Store Provisioning Profile
-6. [ ] Create App Store Connect API Key (Users and Access → Integrations → Keys)
+### Step 1: App Store Connect API Key
+1. [ ] Login to appstoreconnect.apple.com
+2. [ ] Go to Users and Access → Integrations → Keys
+3. [ ] Create new API key with "Developer" access
+4. [ ] Download the `.p8` file
+5. [ ] Note the Key ID and Issuer ID
 
-### Step 2: Local Machine
-1. [ ] Download and install the distribution certificate
-2. [ ] Download and install the provisioning profile
-3. [ ] Fix certificate trust settings (Keychain → Use System Defaults)
-4. [ ] Run `security find-identity -v -p codesigning` to verify
-
-### Step 3: Create Certificates Repo
+### Step 2: Create Certificates Repo
 1. [ ] Create private repo `ios-certificates` on GitHub (under TaggedWeb org)
-2. [ ] Create SSH key with access to the repo
-3. [ ] Add SSH key to GitHub account
+2. [ ] Create SSH key: `ssh-keygen -t ed25519 -C "ios-certificates"`
+3. [ ] Add public key to GitHub account
+4. [ ] Add private key as `MATCH_SSH_PRIVATE_KEY` secret
 
-### Step 4: Initialize Fastlane Match
+### Step 3: Initialize Fastlane Match
 1. [ ] Run `cd ios` in terminal
 2. [ ] Run `bundle exec fastlane match init`
 3. [ ] Select "git" storage mode
 4. [ ] Enter the certificates repo URL
 5. [ ] Run `bundle exec fastlane match appstore`
-6. [ ] Verify certificates are encrypted and pushed to repo
+6. [ ] Set `MATCH_PASSWORD` (encryption password you choose)
+7. [ ] Verify certificates are encrypted and pushed to repo
 
-### Step 5: Set GitHub Secrets
-1. [ ] Get SSH private key content: `cat ~/.ssh/id_rsa` (or your key)
-2. [ ] Add to GitHub Secrets as `MATCH_SSH_PRIVATE_KEY`
-3. [ ] Set `MATCH_PASSWORD` (the encryption password you used)
-4. [ ] Set `FASTLANE_PASSWORD` (org Apple ID password)
-5. [ ] Set `APPLE_ID` (org Apple ID email)
-6. [ ] Get API Key ID, Issuer ID, and .p8 file from App Store Connect
-7. [ ] Add them as `APP_STORE_CONNECT_API_KEY_KEY_ID`, `APP_STORE_CONNECT_API_KEY_ISSUER_ID`, `APP_STORE_CONNECT_API_KEY_KEY`
+### Step 4: Set GitHub Secrets
+1. [ ] `MATCH_SSH_PRIVATE_KEY` - SSH private key content
+2. [ ] `MATCH_PASSWORD` - encryption password from Step 3
+3. [ ] `FASTLANE_PASSWORD` - org Apple ID password
+4. [ ] `APPLE_ID` - org Apple ID email
+5. [ ] `APP_STORE_CONNECT_API_KEY_KEY_ID` - from Step 1
+6. [ ] `APP_STORE_CONNECT_API_KEY_ISSUER_ID` - from Step 1
+7. [ ] `APP_STORE_CONNECT_API_KEY_KEY` - .p8 file content from Step 1
 
-### Step 6: Update Workflow File
+### Step 5: Update Workflow File
 1. [ ] Update `git_url` in Matchfile step to point to your real repo
 2. [ ] Commit and push to test
 
