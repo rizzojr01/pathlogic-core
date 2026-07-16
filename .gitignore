@@ -60,3 +60,4 @@ distribution.csr
 distribution.key
 distribution.p12
 ios_distribution.cer
+temp/
