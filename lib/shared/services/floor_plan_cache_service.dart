@@ -13,6 +13,8 @@ class FloorPlanCacheService {
 
   static const String _cacheStatusKeyPrefix = 'fp_status_';
   static const String _cacheMetaKeyPrefix = 'floor_plan_meta_';
+  static const String _cacheEtagKeyPrefix = 'fp_etag_';
+  static const String _cacheLastModKeyPrefix = 'fp_lastmod_';
 
   FloorPlanCacheService(this._prefs);
 
@@ -41,6 +43,40 @@ class FloorPlanCacheService {
   /// Generate a meta key for storing cache timestamp
   String _getMetaKey(String place, String building, String floor) {
     return '$_cacheMetaKeyPrefix${place}_${building}_$floor';
+  }
+
+  String _getEtagKey(String place, String building, String floor) {
+    return '$_cacheEtagKeyPrefix${place}_${building}_$floor';
+  }
+
+  String _getLastModKey(String place, String building, String floor) {
+    return '$_cacheLastModKeyPrefix${place}_${building}_$floor';
+  }
+
+  /// HTTP validators (ETag / Last-Modified) stored for the cached floor, used to
+  /// revalidate against the server so republished maps are picked up instantly
+  /// instead of after a fixed time window.
+  ({String? etag, String? lastModified}) getCacheValidators({
+    required String place,
+    required String building,
+    required String floor,
+  }) {
+    return (
+      etag: _prefs.getString(_getEtagKey(place, building, floor)),
+      lastModified: _prefs.getString(_getLastModKey(place, building, floor)),
+    );
+  }
+
+  /// Refresh the cache timestamp without rewriting the image (e.g. after a 304).
+  Future<void> touchCache({
+    required String place,
+    required String building,
+    required String floor,
+  }) async {
+    await _prefs.setInt(
+      _getMetaKey(place, building, floor),
+      DateTime.now().millisecondsSinceEpoch,
+    );
   }
 
   /// Get cached floor plan image as Uint8List
@@ -121,6 +157,8 @@ class FloorPlanCacheService {
     required String building,
     required String floor,
     required Uint8List bytes,
+    String? etag,
+    String? lastModified,
   }) async {
     final dir = await _getDir();
     final file = File('${dir.path}/${_getFileName(place, building, floor)}');
@@ -131,6 +169,19 @@ class FloorPlanCacheService {
 
     await _prefs.setBool(statusKey, true);
     await _prefs.setInt(metaKey, DateTime.now().millisecondsSinceEpoch);
+
+    final etagKey = _getEtagKey(place, building, floor);
+    final lastModKey = _getLastModKey(place, building, floor);
+    if (etag != null) {
+      await _prefs.setString(etagKey, etag);
+    } else {
+      await _prefs.remove(etagKey);
+    }
+    if (lastModified != null) {
+      await _prefs.setString(lastModKey, lastModified);
+    } else {
+      await _prefs.remove(lastModKey);
+    }
   }
 
   /// Clear status helper
@@ -141,6 +192,8 @@ class FloorPlanCacheService {
   }) async {
     await _prefs.remove(_getStatusKey(place, building, floor));
     await _prefs.remove(_getMetaKey(place, building, floor));
+    await _prefs.remove(_getEtagKey(place, building, floor));
+    await _prefs.remove(_getLastModKey(place, building, floor));
   }
 
   /// Clear cache for a specific location
@@ -164,13 +217,17 @@ class FloorPlanCacheService {
     required String place,
     required String building,
   }) async {
-    final statusPrefix = '$_cacheStatusKeyPrefix${place}_${building}_';
-    final metaPrefix = '$_cacheMetaKeyPrefix${place}_${building}_';
+    final prefixes = [
+      '$_cacheStatusKeyPrefix${place}_${building}_',
+      '$_cacheMetaKeyPrefix${place}_${building}_',
+      '$_cacheEtagKeyPrefix${place}_${building}_',
+      '$_cacheLastModKeyPrefix${place}_${building}_',
+    ];
     final filePrefix = 'fp_${place}_${building}_';
 
     final keys = _prefs.getKeys().toList();
     for (final key in keys) {
-      if (key.startsWith(statusPrefix) || key.startsWith(metaPrefix)) {
+      if (prefixes.any(key.startsWith)) {
         await _prefs.remove(key);
       }
     }
@@ -191,7 +248,9 @@ class FloorPlanCacheService {
     final keys = _prefs.getKeys();
     for (final key in keys) {
       if (key.startsWith(_cacheStatusKeyPrefix) ||
-          key.startsWith(_cacheMetaKeyPrefix)) {
+          key.startsWith(_cacheMetaKeyPrefix) ||
+          key.startsWith(_cacheEtagKeyPrefix) ||
+          key.startsWith(_cacheLastModKeyPrefix)) {
         await _prefs.remove(key);
       }
     }

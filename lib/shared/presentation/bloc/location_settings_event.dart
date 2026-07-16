@@ -42,6 +42,12 @@ class SaveLocationSettingsEvent extends LocationSettingsEvent {
   const SaveLocationSettingsEvent();
 }
 
+/// Force-redownloads all floor maps for the current building, ignoring the
+/// cache (clears it first). Used by the "Refresh maps" settings button.
+class ForceRefreshMapsEvent extends LocationSettingsEvent {
+  const ForceRefreshMapsEvent();
+}
+
 /// Triggers GPS-based auto-detection of place + building
 class AutoDetectByGpsEvent extends LocationSettingsEvent {
   const AutoDetectByGpsEvent();

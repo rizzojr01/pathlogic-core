@@ -19,6 +19,13 @@ class RefreshHeadingAtStartEvent extends NavigationEvent {
   List<Object?> get props => [heading];
 }
 
+/// Drops any in-memory route/floor-plan/destination snapshot so the next
+/// navigation reloads everything fresh. Dispatched after a forced map refresh
+/// (the bloc is a singleton, so its cached state would otherwise stay stale).
+class ResetNavigationEvent extends NavigationEvent {
+  const ResetNavigationEvent();
+}
+
 class InitializeNavigationEvent extends NavigationEvent {
   final DestinationEntity destination;
   final String? imagePath;

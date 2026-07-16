@@ -1,6 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/constants/api_routes.dart';
+import '../../../injection.dart';
+import '../../../features/navigation/presentation/bloc/navigation_bloc.dart';
+import '../../../features/navigation/presentation/bloc/navigation_event.dart';
 import '../../data/datasources/place_remote_datasource.dart';
 import '../../domain/entities/gps_mapping_entity.dart';
 import '../../domain/entities/wifi_mapping_entity.dart';
@@ -40,6 +43,7 @@ class LocationSettingsBloc
     on<SelectBuildingEvent>(_onSelectBuilding);
     on<SelectFloorEvent>(_onSelectFloor);
     on<SaveLocationSettingsEvent>(_onSave);
+    on<ForceRefreshMapsEvent>(_onForceRefreshMaps);
     on<AutoDetectByGpsEvent>(_onAutoDetectByGps);
     on<AutoDetectByWifiEvent>(_onAutoDetectByWifi);
     on<SaveWifiMappingEvent>(_onSaveWifiMapping);
@@ -201,6 +205,52 @@ class LocationSettingsBloc
         );
       }
     }
+  }
+
+  /// Force-redownload every floor map for the current building, ignoring the
+  /// cache. `force: true` clears the cache first, so this bypasses both the
+  /// HTTP validators and the freshness window.
+  Future<void> _onForceRefreshMaps(
+    ForceRefreshMapsEvent event,
+    Emitter<LocationSettingsState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is! LocationSettingsLoaded) return;
+
+    final place = currentState.selectedPlace;
+    final building = currentState.selectedBuilding;
+
+    await destinationsCacheService.clearAllCache();
+    emit(
+      currentState.copyWith(
+        isSyncing: true,
+        syncMessage: 'Refreshing maps for $building…',
+      ),
+    );
+
+    final result = await mapDownloadService.syncMapsForBuilding(
+      place: place,
+      building: building,
+      baseUrl: ApiRoutes.baseUrl,
+      force: true,
+    );
+
+    // Drop the singleton NavigationBloc's in-memory route/floor-plan/destination
+    // snapshot so the next navigation reloads fresh. Factory blocs (LocateMe,
+    // Destination) already rebuild fresh on screen entry, and destination reads
+    // always hit the API — this covers the one bloc that persists across the app.
+    if (getIt.isRegistered<NavigationBloc>()) {
+      getIt<NavigationBloc>().add(const ResetNavigationEvent());
+    }
+
+    emit(
+      currentState.copyWith(
+        isSyncing: false,
+        syncMessage: result.success
+            ? 'Maps refreshed (${result.downloadedFloors.length} floors)'
+            : 'Map refresh failed: ${result.errorMessage}',
+      ),
+    );
   }
 
   // ---------------------------------------------------------------------------
