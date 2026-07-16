@@ -709,6 +709,87 @@ class ProfilePage extends StatelessWidget {
                 indent: 68,
                 color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
               ),
+              // ── Snap-to-Route Toggle ───────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.secondaryContainer.withValues(
+                          alpha: 0.35,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.route_outlined,
+                        color: theme.colorScheme.secondary,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Snap to Route',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            locationConfig.snapToRoute
+                                ? 'Path snapped to corridors (snap_to_route: true)'
+                                : 'Raw path, no snapping (snap_to_route: false)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch.adaptive(
+                      value: locationConfig.snapToRoute,
+                      onChanged: (value) async {
+                        await locationConfig.setSnapToRoute(value);
+                        setState(() {});
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).clearSnackBars();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                value
+                                    ? 'Snap to route enabled'
+                                    : 'Snap to route disabled',
+                              ),
+                              backgroundColor: theme.colorScheme.secondary,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      activeColor: theme.colorScheme.secondary,
+                    ),
+                  ],
+                ),
+              ),
+              Divider(
+                height: 1,
+                indent: 68,
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+              ),
 
               // Alternate Sample Image Link
               InkWell(
@@ -1919,6 +2000,54 @@ class _LocationSettingsSheet extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2),
             ),
           ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // Force-refresh maps: re-download every floor for the current building,
+        // ignoring the cache. Use after new maps are published server-side.
+        Builder(
+          builder: (context) {
+            final loaded = state is LocationSettingsLoaded ? state : null;
+            final syncing = loaded?.isSyncing ?? false;
+            return SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: syncing
+                    ? null
+                    : () => context.read<LocationSettingsBloc>().add(
+                        const ForceRefreshMapsEvent(),
+                      ),
+                icon: syncing
+                    ? SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: theme.colorScheme.primary,
+                        ),
+                      )
+                    : const Icon(Icons.refresh),
+                label: Text(
+                  syncing
+                      ? (loaded?.syncMessage ?? 'Refreshing maps…')
+                      : 'REFRESH MAPS',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.colorScheme.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: BorderSide(color: theme.colorScheme.primary),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ],
     );
