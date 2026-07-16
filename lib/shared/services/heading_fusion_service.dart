@@ -59,6 +59,11 @@ class HeadingFusionService {
   // compass is forwarded directly so heading still works on gyro-less devices.
   bool _hasGyro = false;
 
+  // True once a real magnetic fix has anchored [_fused] to absolute north. The
+  // first valid compass event snaps _fused to it (rather than slow-correcting),
+  // so a gyro-first seed of 0 doesn't leave the heading permanently offset.
+  bool _hasMagFix = false;
+
   final Stopwatch _stopwatch = Stopwatch();
 
   // ── Tuning ────────────────────────────────────────────────────────────────
@@ -79,11 +84,19 @@ class HeadingFusionService {
 
     _compassSub = FlutterCompass.events?.listen((e) {
       final h = e.heading;
-      if (h == null || h.isNaN || h.isInfinite || h < 0) return;
+      // NOTE: Android's flutter_compass reports heading in −180..+180 (from
+      // SensorManager.getOrientation), while iOS reports 0..360. Do NOT reject
+      // negatives — normalize instead, or every west/south heading is dropped on
+      // Android and the map never rotates. Only drop genuinely invalid values.
+      if (h == null || h.isNaN || h.isInfinite) return;
       _magHeading = _norm360(h);
       _magAccuracy = e.accuracy;
-      // Seed the fused heading from the first valid magnetic fix.
-      _fused ??= _magHeading;
+      // Snap to the first real magnetic fix (anchors absolute north); afterwards
+      // the gyro loop slow-corrects toward the compass.
+      if (!_hasMagFix) {
+        _fused = _magHeading;
+        _hasMagFix = true;
+      }
       // Gyro-less fallback: keep emitting the raw compass so heading still works.
       if (!_hasGyro && _fused != null && !_controller.isClosed) {
         _controller.add(_fused!);
@@ -114,8 +127,10 @@ class HeadingFusionService {
 
         // Skip the first sample and any stalled gap (app backgrounded, etc.).
         if (dt <= 0 || dt > 0.5) return;
-        // Wait for the first compass fix to anchor absolute north.
-        if (_fused == null) return;
+        // Seed on the gyro path too so a slow/absent compass can't block all
+        // emissions (the compass listener snaps _fused to absolute north as soon
+        // as the first magnetic fix arrives).
+        _fused ??= _magHeading ?? 0.0;
 
         // Unit up-vector (accelerometer points opposite gravity ⇒ toward sky).
         final norm = math.sqrt(_ax * _ax + _ay * _ay + _az * _az);
@@ -159,6 +174,7 @@ class HeadingFusionService {
     _compassSub = null;
     _stopwatch.stop();
     _hasGyro = false;
+    _hasMagFix = false;
     _gravityInit = false;
     _fused = null;
     _magHeading = null;
