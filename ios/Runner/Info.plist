@@ -35,14 +35,14 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>This app needs access to your camera to capture photos for tagging locations.</string>
-	<key>NSMotionUsageDescription</key>
-	<string>This app uses motion sensors to keep the map oriented to the direction you are facing.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>This app needs access to your location to tag photos and provide location-based features.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>This app needs access to your location to tag photos with location data.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app needs access to your location to tag photos with location data.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>This app uses motion sensors to keep the map oriented to the direction you are facing.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app needs access to your photo library to save and select photos.</string>
 	<key>UIApplicationSceneManifest</key>
