@@ -21,17 +21,22 @@ void main() async {
   // Load environment variables
   await dotenv.load(fileName: ".env");
 
-  // Initialize Firebase
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Firebase web config not generated — skip Firebase entirely on web.
+  // Regenerate with `flutterfire configure --platforms=web` to enable.
+  if (!kIsWeb) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
-  // Pass all unhandled errors from the framework to Crashlytics.
-  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
+    // Pass all unhandled errors from the framework to Crashlytics.
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
 
-  // Pass all errors outside of Flutter framework to Crashlytics.
-  PlatformDispatcher.instance.onError = (error, stack) {
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-    return true;
-  };
+    // Pass all errors outside of Flutter framework to Crashlytics.
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+  }
 
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([
@@ -43,11 +48,14 @@ void main() async {
   await initializeDependencies();
 
   // Initialize FCM (get token + start listening for data messages)
-  // FCM is non-critical — app should still work without push notifications
-  try {
-    await getIt<FcmService>().init();
-  } catch (e) {
-    getIt<AppLogger>().error('FCM initialization failed', error: e);
+  // FCM is non-critical — app should still work without push notifications.
+  // Skip on web since Firebase is not initialized there.
+  if (!kIsWeb) {
+    try {
+      await getIt<FcmService>().init();
+    } catch (e) {
+      getIt<AppLogger>().error('FCM initialization failed', error: e);
+    }
   }
 
   // Pre-download floor plan images for the current building in the background.
