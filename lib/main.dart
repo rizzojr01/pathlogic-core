@@ -61,9 +61,19 @@ void main() async {
   // Pre-download floor plan images for the current building in the background.
   // This populates the FloorPlanCacheService so navigation works without
   // per-floor API calls. Runs fire-and-forget — won't block app startup.
-  _syncMapsInBackground();
+  // Skip on web: uses path_provider which has no web impl.
+  if (!kIsWeb) {
+    _syncMapsInBackground();
+  }
 
   final sentryDsn = dotenv.env['SENTRY_DSN'] ?? '';
+
+  // Sentry on web with an empty DSN can swallow the appRunner and leave a
+  // blank page. Only wrap runApp in Sentry when a DSN is actually configured.
+  if (sentryDsn.isEmpty) {
+    runApp(const App());
+    return;
+  }
 
   await SentryFlutter.init(
     (options) {
