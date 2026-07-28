@@ -1,14 +1,6 @@
 name: iOS TestFlight Deployment
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'ios/**'
-      - 'lib/**'
-      - 'pubspec.yaml'
-      - '.github/workflows/**'
   workflow_dispatch:
     inputs:
       app:
@@ -57,16 +49,15 @@ jobs:
       - name: Read App Configuration
         id: config
         run: |
-          APP_NAME="${{ github.event.inputs.app || 'plcore' }}"
-          echo "Reading configuration for app: $APP_NAME"
+          echo "Reading configuration for app: ${{ github.event.inputs.app }}"
           
           # Extract app configuration from JSON
-          BUNDLE_ID=$(jq -r ".apps[] | select(.id == \"$APP_NAME\") | .bundle_id" .github/app_config.json)
-          TEAM_ID=$(jq -r ".apps[] | select(.id == \"$APP_NAME\") | .team_id" .github/app_config.json)
-          ASC_TEAM_ID=$(jq -r ".apps[] | select(.id == \"$APP_NAME\") | .app_store_connect_team_id" .github/app_config.json)
-          ITC_TEAM_ID=$(jq -r ".apps[] | select(.id == \"$APP_NAME\") | .itc_team_id" .github/app_config.json)
-          APP_NAME=$(jq -r ".apps[] | select(.id == \"$APP_NAME\") | .name" .github/app_config.json)
-          DISPLAY_NAME=$(jq -r ".apps[] | select(.id == \"$APP_NAME\") | .display_name" .github/app_config.json)
+          BUNDLE_ID=$(jq -r ".apps[] | select(.id == \"${{ github.event.inputs.app }}\") | .bundle_id" .github/app_config.json)
+          TEAM_ID=$(jq -r ".apps[] | select(.id == \"${{ github.event.inputs.app }}\") | .team_id" .github/app_config.json)
+          ASC_TEAM_ID=$(jq -r ".apps[] | select(.id == \"${{ github.event.inputs.app }}\") | .app_store_connect_team_id" .github/app_config.json)
+          ITC_TEAM_ID=$(jq -r ".apps[] | select(.id == \"${{ github.event.inputs.app }}\") | .itc_team_id" .github/app_config.json)
+          APP_NAME=$(jq -r ".apps[] | select(.id == \"${{ github.event.inputs.app }}\") | .name" .github/app_config.json)
+          DISPLAY_NAME=$(jq -r ".apps[] | select(.id == \"${{ github.event.inputs.app }}\") | .display_name" .github/app_config.json)
           
           echo "bundle_id=$BUNDLE_ID" >> $GITHUB_OUTPUT
           echo "team_id=$TEAM_ID" >> $GITHUB_OUTPUT
