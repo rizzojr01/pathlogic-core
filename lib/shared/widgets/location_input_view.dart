@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:camera/camera.dart';
 import 'package:camera_macos/camera_macos.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -191,7 +192,7 @@ class _LocationInputViewState extends State<LocationInputView> with TickerProvid
       await Future.delayed(const Duration(milliseconds: 300));
       if (!mounted) return;
 
-      if (Platform.isMacOS) {
+      if ((!kIsWeb && Platform.isMacOS)) {
         if (mounted) setState(() => _errorMessage = null);
         return;
       }
@@ -249,7 +250,7 @@ class _LocationInputViewState extends State<LocationInputView> with TickerProvid
   }
 
   Future<void> _captureImage() async {
-    if (Platform.isMacOS) {
+    if ((!kIsWeb && Platform.isMacOS)) {
       if (_macOSController != null && !_isCapturing) {
         setState(() => _isCapturing = true);
         final headingAtCapture = _currentHeading;
@@ -322,12 +323,15 @@ class _LocationInputViewState extends State<LocationInputView> with TickerProvid
       // 2. Take the picture
       final image = await _controller!.takePicture();
 
-      // Ensure the file is fully written before reading
-      final imageFile = File(image.path);
-      int retryCount = 0;
-      while (!await imageFile.exists() && retryCount < 5) {
-        await Future.delayed(const Duration(milliseconds: 100));
-        retryCount++;
+      // Ensure the file is fully written before reading (skip on web — XFile
+      // wraps a blob URL, dart:io File has no web impl).
+      if (!kIsWeb) {
+        final imageFile = File(image.path);
+        int retryCount = 0;
+        while (!await imageFile.exists() && retryCount < 5) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          retryCount++;
+        }
       }
 
       final isClear = await _isImageClear(image.path);
@@ -379,7 +383,7 @@ class _LocationInputViewState extends State<LocationInputView> with TickerProvid
 
   Widget _buildCameraTab(ThemeData theme) {
     // macOS Camera View
-    if (Platform.isMacOS) {
+    if ((!kIsWeb && Platform.isMacOS)) {
       return Stack(
         fit: StackFit.expand,
         children: [

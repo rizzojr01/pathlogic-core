@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
+import 'package:cross_file/cross_file.dart';
 import 'package:image/image.dart' as img;
 
 class ImageUtils {
@@ -8,18 +8,17 @@ class ImageUtils {
   ///
   /// This helps prevent 'Connection reset' errors caused by sending massive
   /// raw high-res photos to the backend.
+  ///
+  /// [filePath] is a file path on native and a blob: URL on web. XFile
+  /// handles both.
   static Future<String> compressAndEncodeImage(
     String filePath, {
     int? maxWidth,
     int? maxHeight,
     int quality = 100,
   }) async {
-    final File imageFile = File(filePath);
-    if (!await imageFile.exists()) {
-      return '';
-    }
-
-    final Uint8List bytes = await imageFile.readAsBytes();
+    final Uint8List bytes = await XFile(filePath).readAsBytes();
+    if (bytes.isEmpty) return '';
 
     // Decode the image
     img.Image? image = img.decodeImage(bytes);
