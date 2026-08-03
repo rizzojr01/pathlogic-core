@@ -183,9 +183,13 @@ class ApiClient {
       case DioExceptionType.cancel:
         return const NetworkException('Request cancelled');
       case DioExceptionType.connectionError:
-        return const NetworkException('No internet connection');
+        return NetworkException(
+          error.message?.isNotEmpty == true
+              ? error.message!
+              : 'Connection error',
+        );
       default:
-        return NetworkException('Unexpected error: ${error.message}');
+        return NetworkException(error.message ?? 'Unexpected error');
     }
   }
 }
