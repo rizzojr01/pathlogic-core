@@ -1,6 +1,7 @@
-import 'dart:io';
+import 'dart:io' show HttpClient, X509Certificate;
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../error/exceptions.dart';
 import '../utils/logger.dart';
 
@@ -32,6 +33,8 @@ class ApiClient {
   }
 
   void _setupCertificateBypass() {
+    // Web uses the browser's fetch stack — no IOHttpClientAdapter, no cert bypass.
+    if (kIsWeb) return;
     _dio.httpClientAdapter = IOHttpClientAdapter(
       createHttpClient: () {
         final client = HttpClient();
@@ -180,9 +183,13 @@ class ApiClient {
       case DioExceptionType.cancel:
         return const NetworkException('Request cancelled');
       case DioExceptionType.connectionError:
-        return const NetworkException('No internet connection');
+        return NetworkException(
+          error.message?.isNotEmpty == true
+              ? error.message!
+              : 'Connection error',
+        );
       default:
-        return NetworkException('Unexpected error: ${error.message}');
+        return NetworkException(error.message ?? 'Unexpected error');
     }
   }
 }

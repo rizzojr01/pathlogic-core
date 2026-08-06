@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
 
+import 'package:cross_file/cross_file.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_compass/flutter_compass.dart';
@@ -10,6 +10,7 @@ import '../../../../shared/services/floor_plan_cache_service.dart';
 import '../../../../shared/services/location_config_service.dart';
 import '../../../destination/domain/entities/destination_entity.dart';
 import '../../../locate_me/domain/usecases/get_destinations_usecase.dart';
+import '../../../locate_me/domain/usecases/get_floor_plan_usecase.dart';
 import '../../../localization_history/domain/entities/localization_history_entity.dart';
 import '../../../localization_history/domain/usecases/save_localization_history_usecase.dart';
 import '../../../../core/utils/image_utils.dart';
@@ -89,22 +90,32 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
 
     emit(const NavigationLoading(message: 'Preparing your route...'));
 
-    // ── Step 1: Read floor plan from cache (pre-loaded by MapDownloadService) ─
-    // Maps are downloaded when the building is selected; no per-request fetch.
-    final floorPlanBase64 = await floorPlanCacheService.getCachedFloorPlanBase64(
-      place: place,
-      building: building,
-      floor: floor,
-    );
+    // ── Step 1: Read floor plan from cache; fall back to API on miss ────────
+    // Pre-sync populates the cache on native; web has no cache so this always
+    // falls through to the API fetch on the first visit to a floor.
+    String? floorPlanBase64 = await floorPlanCacheService
+        .getCachedFloorPlanBase64(place: place, building: building, floor: floor);
 
     if (floorPlanBase64 == null || floorPlanBase64.isEmpty) {
-      emit(
-        const NavigationError(
-          'Floor map not available. Please go to Settings and re-select your '
-          'building to download the latest maps.',
-        ),
+      emit(const NavigationLoading(message: 'Loading floor map...'));
+      final result = await getIt<GetFloorPlanUseCase>()(
+        GetFloorPlanParams(place: place, building: building, floor: floor),
       );
-      return;
+      floorPlanBase64 = result.fold((_) => null, (fp) => fp.base64Image);
+      if (floorPlanBase64 == null || floorPlanBase64.isEmpty) {
+        emit(
+          const NavigationError(
+            'Floor map not available. Check your connection and retry.',
+          ),
+        );
+        return;
+      }
+      await floorPlanCacheService.cacheFloorPlan(
+        place: place,
+        building: building,
+        floor: floor,
+        base64Image: floorPlanBase64,
+      );
     }
 
     // ── Step 2: Prepare the localization image ────────────────────────────────
@@ -136,9 +147,9 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
             quality: locationConfigService.imageQuality,
           );
         } else {
-          final imageFile = File(event.imagePath!);
-          if (await imageFile.exists()) {
-            base64Image = base64Encode(await imageFile.readAsBytes());
+          final bytes = await XFile(event.imagePath!).readAsBytes();
+          if (bytes.isNotEmpty) {
+            base64Image = base64Encode(bytes);
           }
         }
       } catch (e) {

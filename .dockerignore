@@ -1,0 +1,15 @@
+.git
+.dart_tool
+.fvm
+build
+ios
+android
+macos
+linux
+windows
+.vscode
+.idea
+*.iml
+node_modules
+coverage
+.env.local

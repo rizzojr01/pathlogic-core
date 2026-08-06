@@ -1,0 +1,19 @@
+server {
+  listen ${PORT};
+  root /usr/share/nginx/html;
+  index index.html;
+
+  # go_router deep links: fall back to index.html so /route/x doesn't 404 on refresh.
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+
+  # Cache hashed assets aggressively; never cache index.html.
+  location ~* \.(?:js|css|png|jpg|jpeg|svg|woff2?|ttf|ico)$ {
+    expires 30d;
+    add_header Cache-Control "public, max-age=2592000, immutable";
+  }
+  location = /index.html {
+    add_header Cache-Control "no-store";
+  }
+}

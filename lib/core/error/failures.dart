@@ -79,11 +79,15 @@ abstract class Failure extends Equatable {
       return 'The requested resource or location could not be found. Please check your settings or try again.';
     }
 
-    // 8. Camera errors
-    if (lower.contains('cameraexception') || 
-        lower.contains('camera') ||
-        lower.contains('initialize') ||
-        lower.contains('failed to capture')) {
+    // 8. Camera hardware/permission errors (technical only — don't clobber
+    // backend prose that happens to mention "camera").
+    if (lower.contains('cameraexception') ||
+        lower.contains('failed to capture') ||
+        (lower.contains('camera') &&
+            (lower.contains('permission') ||
+                lower.contains('access denied') ||
+                lower.contains('in use') ||
+                lower.contains('unavailable')))) {
       return 'Camera access failed. Please ensure the app has camera permissions and no other app is using the camera, then retry.';
     }
 

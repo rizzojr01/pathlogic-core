@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -7,6 +9,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:smart_sense/app.dart';
 import 'package:smart_sense/core/constants/api_routes.dart';
+import 'package:smart_sense/core/network/api_client.dart';
 import 'package:smart_sense/injection.dart';
 import 'package:smart_sense/core/utils/logger.dart';
 import 'package:smart_sense/shared/services/fcm_service.dart';
@@ -21,17 +24,22 @@ void main() async {
   // Load environment variables
   await dotenv.load(fileName: ".env");
 
-  // Initialize Firebase
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Firebase web config not generated — skip Firebase entirely on web.
+  // Regenerate with `flutterfire configure --platforms=web` to enable.
+  if (!kIsWeb) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
-  // Pass all unhandled errors from the framework to Crashlytics.
-  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
+    // Pass all unhandled errors from the framework to Crashlytics.
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
 
-  // Pass all errors outside of Flutter framework to Crashlytics.
-  PlatformDispatcher.instance.onError = (error, stack) {
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-    return true;
-  };
+    // Pass all errors outside of Flutter framework to Crashlytics.
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+  }
 
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([
@@ -43,19 +51,39 @@ void main() async {
   await initializeDependencies();
 
   // Initialize FCM (get token + start listening for data messages)
-  // FCM is non-critical — app should still work without push notifications
-  try {
-    await getIt<FcmService>().init();
-  } catch (e) {
-    getIt<AppLogger>().error('FCM initialization failed', error: e);
+  // FCM is non-critical — app should still work without push notifications.
+  // Skip on web since Firebase is not initialized there.
+  if (!kIsWeb) {
+    try {
+      await getIt<FcmService>().init();
+    } catch (e) {
+      getIt<AppLogger>().error('FCM initialization failed', error: e);
+    }
   }
+
+  // Wake the API server fire-and-forget so a cold-started backend is already
+  // spinning up before the user's first real request. Any response (even an
+  // error page) counts — we only care that the server got hit.
+  unawaited(
+    getIt<ApiClient>().get<dynamic>('/').catchError((_) => null),
+  );
 
   // Pre-download floor plan images for the current building in the background.
   // This populates the FloorPlanCacheService so navigation works without
   // per-floor API calls. Runs fire-and-forget — won't block app startup.
-  _syncMapsInBackground();
+  // Skip on web: uses path_provider which has no web impl.
+  if (!kIsWeb) {
+    _syncMapsInBackground();
+  }
 
   final sentryDsn = dotenv.env['SENTRY_DSN'] ?? '';
+
+  // Sentry on web with an empty DSN can swallow the appRunner and leave a
+  // blank page. Only wrap runApp in Sentry when a DSN is actually configured.
+  if (sentryDsn.isEmpty) {
+    runApp(const App());
+    return;
+  }
 
   await SentryFlutter.init(
     (options) {
