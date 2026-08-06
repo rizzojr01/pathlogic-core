@@ -8,12 +8,22 @@ server {
     try_files $uri $uri/ /index.html;
   }
 
-  # Cache hashed assets aggressively; never cache index.html.
+  # Never cache the Flutter entry points — filenames don't change between
+  # builds but they load the hashed main.dart.js. Caching them pins users
+  # to the old build after a deploy.
+  location = /index.html {
+    add_header Cache-Control "no-store";
+  }
+  location = /flutter_bootstrap.js {
+    add_header Cache-Control "no-store";
+  }
+  location = /flutter_service_worker.js {
+    add_header Cache-Control "no-store";
+  }
+
+  # Everything else (hashed .dart.js chunks, assets) — cache hard.
   location ~* \.(?:js|css|png|jpg|jpeg|svg|woff2?|ttf|ico)$ {
     expires 30d;
     add_header Cache-Control "public, max-age=2592000, immutable";
-  }
-  location = /index.html {
-    add_header Cache-Control "no-store";
   }
 }
