@@ -214,8 +214,13 @@ class _LocationInputViewState extends State<LocationInputView> with TickerProvid
         return;
       }
 
+      final backIndex = cameras.indexWhere(
+        (c) => c.lensDirection == CameraLensDirection.back,
+      );
+      final picked = backIndex >= 0 ? cameras[backIndex] : cameras.first;
+
       _controller = CameraController(
-        cameras.first,
+        picked,
         ResolutionPreset.high,
         enableAudio: false,
       );
