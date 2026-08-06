@@ -19,8 +19,44 @@ class SpeechService {
       await _flutterTts.setSpeechRate(kIsWeb ? 1.0 : 0.5);
       await _flutterTts.setVolume(1.0);
       await _flutterTts.setPitch(1.0);
+      if (kIsWeb) {
+        await _pickBestWebVoice();
+      }
     } catch (e) {
       _logger.error('SpeechService: Failed to initialize TTS: $e');
+    }
+  }
+
+  // Browsers' default SpeechSynthesis voice is usually a low-quality local
+  // synth. Pick a higher-quality en-US voice when one is available (Google,
+  // Microsoft, or vendor-labelled "Natural"/"Enhanced"/"Premium").
+  Future<void> _pickBestWebVoice() async {
+    try {
+      final voices = await _flutterTts.getVoices as List<dynamic>?;
+      if (voices == null || voices.isEmpty) return;
+      const preferred = ['google', 'microsoft', 'natural', 'enhanced', 'premium'];
+      Map? best;
+      for (final key in preferred) {
+        best = voices.cast<Map?>().firstWhere(
+          (v) {
+            if (v == null) return false;
+            final name = (v['name'] ?? '').toString().toLowerCase();
+            final locale = (v['locale'] ?? '').toString().toLowerCase();
+            return name.contains(key) && locale.startsWith('en');
+          },
+          orElse: () => null,
+        );
+        if (best != null) break;
+      }
+      if (best != null) {
+        await _flutterTts.setVoice({
+          'name': best['name'].toString(),
+          'locale': best['locale'].toString(),
+        });
+        _logger.info('SpeechService: web voice → ${best['name']}');
+      }
+    } catch (e) {
+      _logger.error('SpeechService: voice selection failed: $e');
     }
   }
 
