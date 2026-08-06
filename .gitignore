@@ -53,3 +53,7 @@ app.*.map.json
 
 /ar_temp
 unav_app/
+
+# App Store Connect API key — never commit
+AuthKey_*.p8
+*.p8

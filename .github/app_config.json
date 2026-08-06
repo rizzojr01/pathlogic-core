@@ -3,20 +3,20 @@
     {
       "id": "plcore",
       "name": "PlCore",
-      "bundle_id": "com.taggedweb.pathlogic",
-      "team_id": "M26N2KSNVL",
-      "app_store_connect_team_id": "M26N2KSNVL",
-      "itc_team_id": "M26N2KSNVL",
+      "bundle_id": "com.pathlogic.core",
+      "team_id": "3AKM83DNCV",
+      "app_store_connect_team_id": "3AKM83DNCV",
+      "itc_team_id": "3AKM83DNCV",
       "provisioning_profile_specifier": "PlCore Distribution",
       "display_name": "PlCore"
     },
     {
       "id": "plpro",
       "name": "PlPro",
-      "bundle_id": "com.taggedweb.pathlogic-pro",
-      "team_id": "M26N2KSNVL",
-      "app_store_connect_team_id": "M26N2KSNVL",
-      "itc_team_id": "M26N2KSNVL",
+      "bundle_id": "com.pathlogic.pro",
+      "team_id": "3AKM83DNCV",
+      "app_store_connect_team_id": "3AKM83DNCV",
+      "itc_team_id": "3AKM83DNCV",
       "provisioning_profile_specifier": "PlPro Distribution",
       "display_name": "PlPro",
       "branch": "deploy_to_ios_store_2"
