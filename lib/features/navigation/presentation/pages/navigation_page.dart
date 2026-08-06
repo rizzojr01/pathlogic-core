@@ -214,8 +214,13 @@ class _NavigationMapViewState extends State<_NavigationMapView>
       final cameras = await availableCameras();
       if (cameras.isEmpty) return;
 
+      final backIndex = cameras.indexWhere(
+        (c) => c.lensDirection == CameraLensDirection.back,
+      );
+      final picked = backIndex >= 0 ? cameras[backIndex] : cameras.first;
+
       _cameraController = CameraController(
-        cameras.first,
+        picked,
         ResolutionPreset.medium,
         enableAudio: false,
       );
@@ -558,6 +563,7 @@ class _NavigationMapViewState extends State<_NavigationMapView>
                   right: 16,
                   top: 16,
                   child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
                     onTap: _captureAndRelocalize,
                     child: Container(
                       width: 120,
