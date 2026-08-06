@@ -562,12 +562,10 @@ class _NavigationMapViewState extends State<_NavigationMapView>
                 Positioned(
                   right: 16,
                   top: 16,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: _captureAndRelocalize,
+                  child: SizedBox(
+                    width: 120,
+                    height: 160,
                     child: Container(
-                      width: 120,
-                      height: 160,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.zero,
                         boxShadow: [
@@ -582,32 +580,48 @@ class _NavigationMapViewState extends State<_NavigationMapView>
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          CameraPreview(_cameraController!),
+                          // CameraPreview renders as an HTML <video> platform
+                          // view on web — it eats pointer events. IgnorePointer
+                          // hands them off to the overlay below.
+                          IgnorePointer(child: CameraPreview(_cameraController!)),
                           if (_isCapturing)
-                            Container(
-                              color: Colors.black45,
-                              child: const Center(
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                            IgnorePointer(
+                              child: Container(
+                                color: Colors.black45,
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 ),
                               ),
                             ),
-                          Align(
-                            alignment: Alignment.bottomCenter,
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              color: Colors.black54,
-                              child: const Text(
-                                'TAP TO LOCATE',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
+                          IgnorePointer(
+                            child: Align(
+                              alignment: Alignment.bottomCenter,
+                              child: Container(
+                                width: double.infinity,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 4),
+                                color: Colors.black54,
+                                child: const Text(
+                                  'TAP TO LOCATE',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
                                 ),
                               ),
+                            ),
+                          ),
+                          // Transparent tap catcher — top of the Stack so it
+                          // wins over the platform-view video element.
+                          Positioned.fill(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: _captureAndRelocalize,
                             ),
                           ),
                         ],
