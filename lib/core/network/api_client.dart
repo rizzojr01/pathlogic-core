@@ -66,98 +66,83 @@ class ApiClient {
     );
   }
 
-  Future<T> get<T>(
-    String path, {
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-  }) async {
+  // Dio's browser adapter ignores Dio timeout options — enforce a client-side
+  // ceiling here so web requests give up at 5 min instead of hanging forever
+  // (upstream Cloudflare/Koyeb still caps first at ~100s if the server hangs).
+  static const _clientTimeout = Duration(minutes: 5);
+
+  Future<T> _run<T>(Future<Response<T>> Function() call) async {
     try {
-      final response = await _dio.get<T>(
-        path,
-        queryParameters: queryParameters,
-        options: options,
+      final response = await call().timeout(
+        _clientTimeout,
+        onTimeout: () => throw DioException.connectionTimeout(
+          timeout: _clientTimeout,
+          requestOptions: RequestOptions(path: ''),
+        ),
       );
       return response.data as T;
     } on DioException catch (e) {
       throw _handleError(e);
     }
   }
+
+  Future<T> get<T>(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+  }) => _run<T>(() => _dio.get<T>(
+        path,
+        queryParameters: queryParameters,
+        options: options,
+      ));
 
   Future<T> post<T>(
     String path, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Options? options,
-  }) async {
-    try {
-      final response = await _dio.post<T>(
+  }) => _run<T>(() => _dio.post<T>(
         path,
         data: data,
         queryParameters: queryParameters,
         options: options,
-      );
-      return response.data as T;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
+      ));
 
   Future<T> put<T>(
     String path, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Options? options,
-  }) async {
-    try {
-      final response = await _dio.put<T>(
+  }) => _run<T>(() => _dio.put<T>(
         path,
         data: data,
         queryParameters: queryParameters,
         options: options,
-      );
-      return response.data as T;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
+      ));
 
   Future<T> patch<T>(
     String path, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Options? options,
-  }) async {
-    try {
-      final response = await _dio.patch<T>(
+  }) => _run<T>(() => _dio.patch<T>(
         path,
         data: data,
         queryParameters: queryParameters,
         options: options,
-      );
-      return response.data as T;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
+      ));
 
   Future<T> delete<T>(
     String path, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Options? options,
-  }) async {
-    try {
-      final response = await _dio.delete<T>(
+  }) => _run<T>(() => _dio.delete<T>(
         path,
         data: data,
         queryParameters: queryParameters,
         options: options,
-      );
-      return response.data as T;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
+      ));
 
   AppException _handleError(DioException error) {
     switch (error.type) {
