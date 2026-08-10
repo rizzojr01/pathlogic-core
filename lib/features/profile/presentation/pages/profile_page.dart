@@ -118,6 +118,24 @@ class ProfilePage extends StatelessWidget {
                       const SizedBox(height: 12),
                       _buildSettingsGroup(context, [
                         _SettingsItem(
+                          icon: Icons.delete_sweep_outlined,
+                          title: 'Clear Destinations Cache',
+                          subtitle: 'Re-fetch next time you navigate',
+                          onTap: () async {
+                            await getIt<DestinationsCacheService>()
+                                .clearAllCache();
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).clearSnackBars();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Destinations cache cleared'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                        _SettingsItem(
                           icon: Icons.help_outline_rounded,
                           title: 'Help Center',
                           subtitle: 'FAQs, Contact Support',
