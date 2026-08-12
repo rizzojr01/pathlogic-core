@@ -1,14 +1,23 @@
 #!/usr/bin/env bash
-# Generate pre-recorded voice assets from the phrase list using macOS `say`.
+# Generate pre-recorded voice assets from the phrase list using edge-tts
+# (Microsoft cloud voices via the Edge Read Aloud API — free, no key).
 # Run this ONCE (or whenever a phrase changes) to (re)produce assets/voice/*.mp3.
-# Replace with your AI-TTS pipeline (ElevenLabs / OpenAI TTS) if you want a
-# non-macOS voice.
+#
+# Install: `pipx install edge-tts` (or `pip install --user edge-tts`).
+# Available voices: `edge-tts --list-voices | grep en-US`
+# Override the voice with: VOICE="en-US-GuyNeural" ./scripts/gen-voice-assets.sh
 
 set -euo pipefail
 
-VOICE="${VOICE:-Samantha (Enhanced)}"   # override with VOICE="Ava (Premium)" etc.
+VOICE="${VOICE:-en-US-AriaNeural}"
 OUT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/assets/voice"
 mkdir -p "$OUT_DIR"
+
+if ! command -v edge-tts >/dev/null; then
+  echo "ERROR: edge-tts not found on PATH."
+  echo "Install: pipx install edge-tts   (or: pip install --user edge-tts)"
+  exit 1
+fi
 
 # format: filename|text
 PHRASES=$(cat <<'EOF'
@@ -31,18 +40,8 @@ echo
 
 while IFS='|' read -r name text; do
   [[ -z "$name" ]] && continue
-  aiff="$OUT_DIR/$name.aiff"
-  mp3="$OUT_DIR/$name.mp3"
   echo "-> $name.mp3"
-  say -v "$VOICE" -o "$aiff" "$text"
-  # ffmpeg to mp3 (small, universal). Falls back to leaving aiff if ffmpeg absent.
-  if command -v ffmpeg >/dev/null; then
-    ffmpeg -y -loglevel error -i "$aiff" -codec:a libmp3lame -qscale:a 2 "$mp3"
-    rm "$aiff"
-  else
-    echo "   ffmpeg not installed — leaving as $name.aiff. Run: brew install ffmpeg"
-    mv "$aiff" "$OUT_DIR/$name.aiff"
-  fi
+  edge-tts --voice "$VOICE" --text "$text" --write-media "$OUT_DIR/$name.mp3"
 done <<< "$PHRASES"
 
 echo
