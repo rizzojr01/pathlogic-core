@@ -223,7 +223,9 @@ jobs:
                 readonly: true
               )
               
-              # Build the app
+              # Build the app — force manual signing with match's App Store
+              # profile so xcodebuild doesn't try Automatic (Development) signing
+              # (which fails on CI because no Apple ID is logged into Xcode).
               build_app(
                 workspace: "Runner.xcworkspace",
                 scheme: "Runner",
@@ -234,7 +236,13 @@ jobs:
                     app_identifier => "match AppStore #{app_identifier}"
                   }
                 },
-                xcargs: "-allowProvisioningUpdates"
+                xcargs: [
+                  "-allowProvisioningUpdates",
+                  "CODE_SIGN_STYLE=Manual",
+                  "CODE_SIGN_IDENTITY='Apple Distribution'",
+                  "DEVELOPMENT_TEAM=#{team_id}",
+                  "PROVISIONING_PROFILE_SPECIFIER='match AppStore #{app_identifier}'"
+                ].join(" ")
               )
               
               # Upload to TestFlight
@@ -270,9 +278,16 @@ jobs:
                   provisioningProfiles: {
                     app_identifier => "match AppStore #{app_identifier}"
                   }
-                }
+                },
+                xcargs: [
+                  "-allowProvisioningUpdates",
+                  "CODE_SIGN_STYLE=Manual",
+                  "CODE_SIGN_IDENTITY='Apple Distribution'",
+                  "DEVELOPMENT_TEAM=#{team_id}",
+                  "PROVISIONING_PROFILE_SPECIFIER='match AppStore #{app_identifier}'"
+                ].join(" ")
               )
-              
+
               upload_to_app_store(
                 app_identifier: app_identifier,
                 team_id: asc_team_id,
