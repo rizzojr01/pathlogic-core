@@ -36,7 +36,7 @@ on:
         default: 'New build deployed via GitHub Actions'
 
 env:
-  FLUTTER_VERSION: '3.24.5'
+  FLUTTER_VERSION: '3.41.9'
   RUBY_VERSION: '3.2'
 
 jobs:
