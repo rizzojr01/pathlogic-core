@@ -18,7 +18,7 @@ COPY . .
 RUN printf 'BASE_URL=%s\nSENTRY_DSN=%s\n' \
       "$BASE_URL" "$SENTRY_DSN" > .env \
  && flutter pub get \
- && flutter build web --release
+ && flutter build web --release --pwa-strategy=none
 
 # --- Runtime: nginx serving static build, respects $PORT ---
 FROM nginx:alpine
