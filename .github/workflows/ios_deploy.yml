@@ -291,7 +291,7 @@ jobs:
       - name: Create Matchfile
         run: |
           cat > ios/fastlane/Matchfile << 'EOF'
-          git_url("git@github.com:your-org/ios-certificates.git")
+          git_url("git@github.com:rizzojr01/ios-certificates.git")
           storage_mode("git")
           type("appstore")
           
