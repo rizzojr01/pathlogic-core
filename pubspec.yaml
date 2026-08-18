@@ -33,6 +33,7 @@ dependencies:
 
   # Camera
   camera: ^0.11.0+2
+  cross_file: ^0.3.4+2
   path_provider: ^2.1.5
 
   # Location
@@ -60,6 +61,7 @@ dependencies:
   image: ^4.3.0
   firebase_crashlytics: ^4.3.10
   flutter_tts: ^4.2.5
+  audioplayers: ^6.1.0
   sentry_flutter: ^9.23.0
 
 dev_dependencies:
@@ -86,3 +88,4 @@ flutter:
     - assets/images/
     - assets/images/sample_images/
     - assets/node_images/
+    - assets/voice/

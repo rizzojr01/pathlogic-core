@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -82,17 +83,17 @@ class _LoginPageState extends State<LoginPage> {
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
         body: SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 48),
+                  SizedBox(height: kIsWeb ? 16 : 48),
                   _buildHeader(context),
 
-                  const SizedBox(height: 32),
+                  SizedBox(height: kIsWeb ? 20 : 32),
                   CustomTextField(
                     controller: _emailController,
                     labelText: 'Email Address',
@@ -182,6 +183,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -198,21 +200,21 @@ class _LoginPageState extends State<LoginPage> {
       children: [
         PremiumIconContainer(
           icon: Icons.lock_person_rounded,
-          size: 110,
-          iconSize: 52,
+          size: kIsWeb ? 72 : 110,
+          iconSize: kIsWeb ? 34 : 52,
           isCircle: true,
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: kIsWeb ? 12 : 24),
         Text(
           'Welcome',
           style: TextStyle(
-            fontSize: 32,
+            fontSize: kIsWeb ? 24 : 32,
             fontWeight: FontWeight.w900,
             color: theme.colorScheme.onSurface,
             letterSpacing: -1,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: kIsWeb ? 4 : 8),
         Text(
           'Sign in to access your dashboard',
           style: TextStyle(

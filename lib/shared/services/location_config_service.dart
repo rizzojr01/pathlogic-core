@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:smart_sense/injection.dart';
-import 'package:smart_sense/core/network/api_client.dart';
 
 /// Service to manage user's selected location configuration (place, building, floor)
 class LocationConfigService {
@@ -33,8 +30,6 @@ class LocationConfigService {
   static const String _keyShowDebugBanner = 'debug_show_banner';
   static const String _keyRouteColor = 'map_route_color';
   static const String _keyPoiColor = 'map_poi_color';
-  static const String _keyUseKoyebBaseUrl = 'use_koyeb_base_url';
-
   // Default colors
   static const Color _defaultRouteColor = Color(0xFFFFD600);
   static const Color _defaultPoiColor = Color(0xFF1E88E5);
@@ -141,18 +136,6 @@ class LocationConfigService {
   Future<void> setShowDebugBanner(bool value) async {
     debugBannerNotifier.value = value;
     await _prefs.setBool(_keyShowDebugBanner, value);
-  }
-
-  /// Switch base URL between local (BASE_URL) and Koyeb server (KOYEB_BASE_URL)
-  bool get useKoyebBaseUrl => _prefs.getBool(_keyUseKoyebBaseUrl) ?? false;
-
-  Future<void> setUseKoyebBaseUrl(bool value) async {
-    await _prefs.setBool(_keyUseKoyebBaseUrl, value);
-    // Dynamically update the ApiClient base URL
-    final newUrl = value
-        ? (dotenv.env['KOYEB_BASE_URL'] ?? dotenv.get('BASE_URL'))
-        : dotenv.get('BASE_URL');
-    getIt<ApiClient>().updateBaseUrl(newUrl);
   }
 
   /// Get the selected place

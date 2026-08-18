@@ -101,6 +101,15 @@ class MapDownloadService {
     required String baseUrl,
     bool force = false,
   }) async {
+    // Web has no filesystem cache — path_provider + dart:io adapter unusable.
+    // Floor plans stream from backend per-request on web; no pre-sync needed.
+    if (kIsWeb) {
+      return const MapDownloadResult(
+        success: true,
+        downloadedFloors: [],
+        errorMessage: null,
+      );
+    }
     _logger.info(
       'MapDownloadService: Starting sync for $place / $building (force: $force)',
     );

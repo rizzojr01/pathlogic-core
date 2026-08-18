@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
@@ -21,13 +22,13 @@ class DeviceIdService {
     // 1. Try to get hardware-based ID first for better persistence
     String? hardwareId;
     try {
-      if (Platform.isAndroid) {
+      if (!kIsWeb && Platform.isAndroid) {
         final androidInfo = await _deviceInfo.androidInfo;
         hardwareId = androidInfo.id; // stable android id
-      } else if (Platform.isIOS) {
+      } else if (!kIsWeb && Platform.isIOS) {
         final iosInfo = await _deviceInfo.iosInfo;
         hardwareId = iosInfo.identifierForVendor; // stable vendor id
-      } else if (Platform.isMacOS) {
+      } else if (!kIsWeb && Platform.isMacOS) {
         final macInfo = await _deviceInfo.macOsInfo;
         hardwareId = macInfo.systemGUID;
       }

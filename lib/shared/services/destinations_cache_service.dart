@@ -35,16 +35,27 @@ class DestinationsCacheService {
     return '$_cacheMetaKeyPrefix${place}_${building}_${floor}_$multiFloor';
   }
 
-  /// Get cached destinations list
-  /// Returns null if not cached
+  /// Get cached destinations list. Returns null if not cached.
+  /// Persistent (localStorage on web, NSUserDefaults on iOS,
+  /// SharedPreferences on Android). Only cleared on explicit location change
+  /// or manual clear from settings.
   List<DestinationEntity>? getCachedDestinations({
     required String place,
     required String building,
     required String floor,
     required bool multiFloor,
   }) {
-    // Temporary bypass for testing
-    return null;
+    final cacheKey = _getCacheKey(place, building, floor, multiFloor);
+    final jsonString = _prefs.getString(cacheKey);
+    if (jsonString == null || jsonString.isEmpty) return null;
+    try {
+      final list = jsonDecode(jsonString) as List<dynamic>;
+      return list
+          .map((e) => DestinationModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Check if destinations are cached for the given location
@@ -54,8 +65,8 @@ class DestinationsCacheService {
     required String floor,
     required bool multiFloor,
   }) {
-    // Temporary bypass for testing
-    return false;
+    final cacheKey = _getCacheKey(place, building, floor, multiFloor);
+    return _prefs.containsKey(cacheKey);
   }
 
   /// Cache destinations list

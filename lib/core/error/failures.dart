@@ -71,7 +71,20 @@ abstract class Failure extends Equatable {
       return 'Connection to the server failed. Please check your internet connection and try again.';
     }
 
-    // 6. Camera errors — match CAMERA-specific signals only. Bare 'camera' or
+    // 6. Authentication / Unauthorized
+    if (lower.contains('401') ||
+        lower.contains('403') ||
+        lower.contains('unauthorized') ||
+        lower.contains('forbidden')) {
+      return 'Your session has expired or you do not have permission. Please log out and sign back in.';
+    }
+
+    // 7. Not found
+    if (lower.contains('404') || lower.contains('not found')) {
+      return 'The requested resource or location could not be found. Please check your settings or try again.';
+    }
+
+    // 8. Camera errors — match CAMERA-specific signals only. Bare 'camera' or
     // 'initialize' matched generic backend errors (e.g. "failed to initialize
     // localization"), wrongly showing a camera-permission message.
     if (lower.contains('cameraexception') ||

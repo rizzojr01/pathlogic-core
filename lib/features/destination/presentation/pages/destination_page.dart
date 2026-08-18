@@ -297,7 +297,7 @@ class _DestinationTile extends StatelessWidget {
             SelectDestinationEvent(destination.id),
           );
 
-          getIt<SpeechService>().speak("Destination selected: ${destination.name}. Proceeding to camera.");
+          getIt<SpeechService>().speak("Destination selected. Proceeding to camera.");
 
           // 2. Navigate immediately
           if (destination is DestinationEntity) {
