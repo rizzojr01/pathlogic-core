@@ -89,8 +89,12 @@ class MapDownloadService {
   }
 
   /// Downloads all floor maps for the given [place]/[building] combination.
-  /// If [force] is true, it clears the old cache first. Otherwise, it only
-  /// downloads floors that are missing from the cache or older than 24 hours.
+  /// If [force] is true, it clears the old cache first. Otherwise it revalidates
+  /// each cached floor against the server with HTTP validators (ETag /
+  /// Last-Modified): unchanged floors return 304 and are kept, changed floors
+  /// return 200 and are refreshed immediately — so newly published maps arrive
+  /// on the next sync instead of after a 24h window. Floors whose server sends
+  /// no validator fall back to the 24h freshness check.
   Future<MapDownloadResult> syncMapsForBuilding({
     required String place,
     required String building,
@@ -181,30 +185,53 @@ class MapDownloadService {
 
           if (floorKey.isEmpty || downloadUrl.isEmpty) continue;
 
-          // Check if already cached and still fresh (unless force is true).
-          // Cached maps older than 24 hours are refreshed automatically.
-          final hasFreshCache =
-              _cache.hasCachedFloorPlan(
-                place: place,
-                building: building,
-                floor: floorKey,
-              ) &&
-              !_cache.isCacheStale(
-                place: place,
-                building: building,
-                floor: floorKey,
-              );
+          final isCached = _cache.hasCachedFloorPlan(
+            place: place,
+            building: building,
+            floor: floorKey,
+          );
 
-          if (!force && hasFreshCache) {
-            _logger.info(
-              'MapDownloadService: Skipping $floorKey (already cached)',
+          // Revalidate cached floors against the server using HTTP validators
+          // (ETag / Last-Modified) so a republished map is picked up on the very
+          // next sync — no 24h wait, no reinstall. A 304 means "unchanged, keep
+          // cache"; a 200 delivers the new image.
+          final validators = isCached
+              ? _cache.getCacheValidators(
+                  place: place,
+                  building: building,
+                  floor: floorKey,
+                )
+              : (etag: null, lastModified: null);
+          final hasValidator =
+              validators.etag != null || validators.lastModified != null;
+
+          // Only when the server offers no validator do we fall back to the
+          // time-based skip — otherwise we'd re-download every floor on every
+          // launch. With a validator, conditional GETs stay cheap (304s).
+          if (!force && isCached && !hasValidator) {
+            final stale = _cache.isCacheStale(
+              place: place,
+              building: building,
+              floor: floorKey,
             );
-            skippedFloors.add(floorKey);
-            syncStatus.value = syncStatus.value.copyWith(
-              downloadedCount: downloadedFloors.length + skippedFloors.length,
-            );
-            continue;
+            if (!stale) {
+              _logger.info(
+                'MapDownloadService: Skipping $floorKey (fresh, no validator)',
+              );
+              skippedFloors.add(floorKey);
+              syncStatus.value = syncStatus.value.copyWith(
+                downloadedCount: downloadedFloors.length + skippedFloors.length,
+              );
+              continue;
+            }
           }
+
+          final conditionalHeaders = <String, String>{
+            if (!force && isCached && validators.etag != null)
+              'If-None-Match': validators.etag!,
+            if (!force && isCached && validators.lastModified != null)
+              'If-Modified-Since': validators.lastModified!,
+          };
 
           bool success = false;
           int attempts = 0;
@@ -218,8 +245,30 @@ class MapDownloadService {
               );
               final response = await _dio.get<List<int>>(
                 downloadUrl,
-                options: Options(responseType: ResponseType.bytes),
+                options: Options(
+                  responseType: ResponseType.bytes,
+                  headers: conditionalHeaders,
+                  // Accept 304 so an unchanged map doesn't throw.
+                  validateStatus: (s) => s != null && (s == 200 || s == 304),
+                ),
               );
+
+              if (response.statusCode == 304) {
+                // Unchanged — keep the cached image, just refresh its timestamp.
+                await _cache.touchCache(
+                  place: place,
+                  building: building,
+                  floor: floorKey,
+                );
+                skippedFloors.add(floorKey);
+                syncStatus.value = syncStatus.value.copyWith(
+                  downloadedCount:
+                      downloadedFloors.length + skippedFloors.length,
+                );
+                success = true;
+                _logger.info('MapDownloadService: $floorKey unchanged (304)');
+                break;
+              }
 
               final bytes = response.data;
               if (bytes != null && bytes.isNotEmpty) {
@@ -228,6 +277,8 @@ class MapDownloadService {
                   building: building,
                   floor: floorKey,
                   bytes: Uint8List.fromList(bytes),
+                  etag: response.headers.value('etag'),
+                  lastModified: response.headers.value('last-modified'),
                 );
                 downloadedFloors.add(floorKey);
                 syncStatus.value = syncStatus.value.copyWith(

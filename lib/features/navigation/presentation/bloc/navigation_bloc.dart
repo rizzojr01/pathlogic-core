@@ -40,6 +40,7 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     required this.deviceIdService,
   }) : super(const NavigationInitial()) {
     on<InitializeNavigationEvent>(_onInitializeNavigation);
+    on<ResetNavigationEvent>((event, emit) => emit(const NavigationInitial()));
     on<RefreshHeadingAtStartEvent>(_onRefreshHeadingAtStart);
     on<ToggleShowDoorsNavigationEvent>(_onToggleShowDoors);
     on<ToggleShowOnlyDoorsNearPathNavigationEvent>(_onToggleShowOnlyDoorsNearPath);
@@ -171,6 +172,7 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
         base64Image: base64Image,
         saveFrame: locationConfigService.saveFrame,
         multiFloorNavigation: locationConfigService.multiFloorNavigation,
+        snapToRoute: locationConfigService.snapToRoute,
         imageCompression: {
           'enable_compression': locationConfigService.enableCompression,
           'max_height': locationConfigService.maxHeight,

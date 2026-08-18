@@ -21,6 +21,7 @@ class LocationConfigService {
   static const String _keyImageQuality = 'image_compression_quality';
   static const String _keySaveFrame = 'navigation_save_frame';
   static const String _keyMultiFloor = 'navigation_multifloor';
+  static const String _keySnapToRoute = 'navigation_snap_to_route';
   static const String _keyUseAlternateSampleImage =
       'use_alternate_sample_image';
   static const String _keyAlternateSampleImagePath =
@@ -112,6 +113,15 @@ class LocationConfigService {
 
   Future<void> setMultiFloorNavigation(bool value) async {
     await _prefs.setBool(_keyMultiFloor, value);
+  }
+
+  /// Snap-to-route — sends `snap_to_route` in the route request so the backend
+  /// snaps the generated path onto the corridor/route graph.
+  bool get snapToRoute =>
+      _prefs.getBool(_keySnapToRoute) ?? true; // on by default
+
+  Future<void> setSnapToRoute(bool value) async {
+    await _prefs.setBool(_keySnapToRoute, value);
   }
 
   /// Offset in meters for navigation and localization

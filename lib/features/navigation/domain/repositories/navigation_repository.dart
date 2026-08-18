@@ -13,6 +13,7 @@ abstract class NavigationRepository {
     required String base64Image,
     bool saveFrame = false,
     bool multiFloorNavigation = true,
+    bool snapToRoute = true,
     Map<String, dynamic>? imageCompression,
     Map<String, dynamic>? userPickedCoordinates,
     double? heading,

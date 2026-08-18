@@ -15,6 +15,7 @@ class GetRouteParams {
   final String base64Image;
   final bool saveFrame;
   final bool multiFloorNavigation;
+  final bool snapToRoute;
   final Map<String, dynamic>? imageCompression;
   final Map<String, dynamic>? userPickedCoordinates;
   final double? heading;
@@ -30,6 +31,7 @@ class GetRouteParams {
     required this.base64Image,
     this.saveFrame = false,
     this.multiFloorNavigation = true,
+    this.snapToRoute = true,
     this.imageCompression,
     this.userPickedCoordinates,
     this.heading,

@@ -151,20 +151,11 @@ class ApiClient {
       case DioExceptionType.receiveTimeout:
         return const NetworkException('Connection timeout');
       case DioExceptionType.badResponse:
-        final data = error.response?.data;
-        String errorMessage = 'Server error';
-
-        if (data is Map<String, dynamic>) {
-          errorMessage =
-              data['message'] ??
-              data['error'] ??
-              data['details'] ??
-              'Server error';
-        } else if (data is String) {
-          errorMessage = data;
-        }
-
-        return ServerException(errorMessage, error.response?.statusCode);
+        final code = error.response?.statusCode;
+        // Always prefer the backend's own message. Only when the response has
+        // no usable message do we fall back to a generic per-status message.
+        final backendMsg = _extractBackendMessage(error.response?.data);
+        return ServerException(backendMsg ?? _statusMessage(code), code);
       case DioExceptionType.cancel:
         return const NetworkException('Request cancelled');
       case DioExceptionType.connectionError:
@@ -175,6 +166,51 @@ class ApiClient {
         );
       default:
         return NetworkException(error.message ?? 'Unexpected error');
+    }
+  }
+
+  /// Pull a human-readable message the backend actually sent, or null if the
+  /// body has none (empty, HTML error page, or non-string fields).
+  String? _extractBackendMessage(dynamic data) {
+    if (data is Map) {
+      for (final key in const ['message', 'error', 'detail', 'details']) {
+        final v = data[key];
+        if (v is String && v.trim().isNotEmpty) return v.trim();
+      }
+      return null;
+    }
+    if (data is String) {
+      final s = data.trim();
+      // Ignore empty bodies and HTML error pages (not user-facing text).
+      if (s.isEmpty || s.startsWith('<')) return null;
+      return s;
+    }
+    return null;
+  }
+
+  /// Generic message for an HTTP status when the backend sent no message body.
+  String _statusMessage(int? code) {
+    switch (code) {
+      case 400:
+        return 'The request was invalid. Please check your input and try again.';
+      case 401:
+      case 403:
+        return 'Your session has expired or you do not have permission. Please log in again.';
+      case 404:
+        return 'The requested resource could not be found.';
+      case 408:
+        return 'The request timed out. Please try again.';
+      case 429:
+        return 'Too many requests. Please wait a moment and try again.';
+      case 500:
+      case 502:
+      case 503:
+      case 504:
+        return 'The server had a problem processing this request. Please try again shortly.';
+      default:
+        return code != null
+            ? 'Server error ($code). Please try again.'
+            : 'Something went wrong. Please try again.';
     }
   }
 }
