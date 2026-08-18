@@ -157,6 +157,13 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $DISPLAY_NAME" ios/Runner/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleName $DISPLAY_NAME" ios/Runner/Info.plist
 
+      # .env is gitignored but declared as a pubspec asset — the iOS build
+      # fails ("No file or variants found for asset: .env") without it. CI
+      # doesn't need real values here; runtime uses build-time secrets on web
+      # and native reads from bundled config.
+      - name: Ensure .env exists
+        run: touch .env
+
       # pub get MUST complete before pod install — Podfile needs the
       # ios/Flutter/Generated.xcconfig that flutter pub get generates.
       - name: flutter pub get
