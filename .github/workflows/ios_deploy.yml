@@ -108,13 +108,14 @@ jobs:
           flutter pub get
           cd ios && bundle install && cd ..
 
-      - name: Build IPA (Flutter)
-        # `flutter build ipa` compiles Dart + runs xcodebuild archive up-front,
-        # so hangs surface here with visible logs instead of inside fastlane's
-        # buffered Run Script wrapper.
+      - name: Pre-build Flutter iOS bundle
+        # Fastlane's build_app runs xcodebuild archive, which triggers Flutter's
+        # xcode_backend.sh Run Script phase inside Xcode — that step has been
+        # hanging indefinitely on GH runners. Compile the Flutter side up-front
+        # here where output isn't buffered by xcodebuild's script wrapper.
         timeout-minutes: 30
         run: |
-          flutter build ipa --release --no-codesign --verbose
+          flutter build ios --release --no-codesign --verbose
 
       - name: Setup SSH Key for Match
         uses: webfactory/ssh-agent@v0.9.0
