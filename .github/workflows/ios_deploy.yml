@@ -39,7 +39,7 @@ concurrency:
 
 env:
   FLUTTER_VERSION: '3.41.9'
-  RUBY_VERSION: '3.2'
+  RUBY_VERSION: '3.3'
 
 jobs:
   deploy:
