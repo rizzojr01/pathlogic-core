@@ -157,22 +157,13 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $DISPLAY_NAME" ios/Runner/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleName $DISPLAY_NAME" ios/Runner/Info.plist
 
-      # ── Parallel deps: pub get + pod install run concurrently ────────────
-      - name: Install project dependencies (parallel)
-        run: |
-          set -e
-          echo "▶ flutter pub get (background)"
-          flutter pub get > /tmp/pub.log 2>&1 &
-          PUB_PID=$!
+      # pub get MUST complete before pod install — Podfile needs the
+      # ios/Flutter/Generated.xcconfig that flutter pub get generates.
+      - name: flutter pub get
+        run: flutter pub get
 
-          echo "▶ pod install (foreground)"
-          cd ios
-          bundle exec pod install --repo-update
-          cd ..
-
-          wait $PUB_PID
-          echo "▶ pub get done"
-          cat /tmp/pub.log | tail -5
+      - name: pod install
+        run: cd ios && bundle exec pod install --repo-update
 
       # ── Pre-compile Flutter side (surfaces hangs early, primes DerivedData) ─
       - name: Pre-build Flutter iOS bundle
