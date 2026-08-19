@@ -197,10 +197,38 @@ jobs:
           cp /tmp/match_lane.rb fastlane/Fastfile
           bundle exec fastlane install_certs
 
-      # ── Build signed IPA with Flutter (fast, no xcodebuild Run Script hang) ─
-      - name: Build IPA
-        timeout-minutes: 120
+      # ── Build IPA — split into 3 steps so xcodebuild archive output isn't
+      # buffered by Flutter's tool wrapper (which was hiding hangs) ────────
+      - name: Compile Flutter (Dart → native, no codesign)
+        timeout-minutes: 20
+        run: flutter build ios --release --no-codesign --verbose
+
+      - name: Xcodebuild archive
+        timeout-minutes: 60
         run: |
+          set -o pipefail
+          cd ios
+          # Piped through cat so xcodebuild output line-flushes to our log
+          # instead of buffering under Flutter's tool wrapper.
+          xcodebuild \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$PWD/../build/ios/archive/Runner.xcarchive" \
+            -allowProvisioningUpdates \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY='Apple Distribution' \
+            DEVELOPMENT_TEAM='${{ steps.config.outputs.team_id }}' \
+            PROVISIONING_PROFILE_SPECIFIER='match AppStore ${{ steps.config.outputs.bundle_id }}' \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            archive 2>&1 | cat
+
+      - name: Xcodebuild export IPA
+        timeout-minutes: 15
+        run: |
+          set -o pipefail
           cat > ios/ExportOptions.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -222,11 +250,12 @@ jobs:
           </dict>
           </plist>
           EOF
-          # --verbose so we see xcodebuild progress and can diagnose future hangs
-          # (was hanging silently after 'Running pod install' with no output).
-          flutter build ipa --release \
-            --export-options-plist=ios/ExportOptions.plist \
-            --verbose
+          xcodebuild -exportArchive \
+            -archivePath "$PWD/build/ios/archive/Runner.xcarchive" \
+            -exportPath "$PWD/build/ios/ipa" \
+            -exportOptionsPlist "$PWD/ios/ExportOptions.plist" \
+            -allowProvisioningUpdates 2>&1 | cat
+          ls -lh build/ios/ipa/
 
       # ── Upload the IPA that flutter build ipa produced ───────────────────
       # We skip fastlane's build_app entirely because xcodebuild archive
