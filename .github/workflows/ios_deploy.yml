@@ -44,7 +44,7 @@ env:
 jobs:
   deploy:
     runs-on: macos-latest
-    timeout-minutes: 90
+    timeout-minutes: 180
 
     steps:
       # ── Fail fast on missing secrets ─────────────────────────────────────
@@ -131,13 +131,6 @@ jobs:
           key: pods-${{ runner.os }}-${{ hashFiles('ios/Podfile.lock') }}
           restore-keys: pods-${{ runner.os }}-
 
-      - name: Cache Xcode DerivedData
-        uses: actions/cache@v4
-        with:
-          path: ~/Library/Developer/Xcode/DerivedData
-          key: derived-data-${{ runner.os }}-${{ hashFiles('ios/Podfile.lock', 'pubspec.lock') }}
-          restore-keys: derived-data-${{ runner.os }}-
-
       - name: Setup SSH Key for Match
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -206,7 +199,7 @@ jobs:
 
       # ── Build signed IPA with Flutter (fast, no xcodebuild Run Script hang) ─
       - name: Build IPA
-        timeout-minutes: 60
+        timeout-minutes: 120
         run: |
           cat > ios/ExportOptions.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
