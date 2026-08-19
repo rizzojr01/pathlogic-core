@@ -20,9 +20,20 @@ server {
   location = /flutter_service_worker.js {
     add_header Cache-Control "no-store";
   }
+  location = /manifest.json {
+    add_header Cache-Control "no-store";
+  }
 
-  # Everything else (hashed .dart.js chunks, assets) — cache hard.
-  location ~* \.(?:js|css|png|jpg|jpeg|svg|woff2?|ttf|ico)$ {
+  # Flutter's own bundle already hashes filenames of the code chunks (main.dart.js,
+  # canvaskit, etc.) so those get long TTLs. Manually-authored assets (fonts,
+  # images, audio) keep stable paths — cache 1h with must-revalidate so a new
+  # deploy replaces them within the hour instead of after 30 days.
+  location ~* ^/(assets|icons)/ {
+    add_header Cache-Control "public, max-age=3600, must-revalidate";
+  }
+
+  # Everything else (hashed Flutter chunks) — cache hard.
+  location ~* \.(?:js|css|woff2?|ttf)$ {
     expires 30d;
     add_header Cache-Control "public, max-age=2592000, immutable";
   }
