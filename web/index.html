@@ -36,6 +36,24 @@
     <link rel="manifest" href="manifest.json" />
   </head>
   <body>
+    <!--
+      One-time cleanup for browsers that installed the old service worker
+      (before we switched to --pwa-strategy=none). Without this the old SW
+      keeps serving cached assets even after a new deploy — users would need
+      to manually clear site data. Runs on every load; no-op once done.
+    -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          for (var r of regs) r.unregister();
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then(function (keys) {
+          for (var k of keys) caches.delete(k);
+        });
+      }
+    </script>
     <script src="flutter_bootstrap.js" async></script>
   </body>
 </html>
