@@ -163,7 +163,7 @@ jobs:
         run: flutter pub get
 
       - name: pod install
-        run: cd ios && bundle exec pod install --repo-update
+        run: cd ios && bundle exec pod install
 
       # ── Install match certs into CI keychain so flutter build ipa can sign ─
       - name: Install signing certs via match
@@ -210,6 +210,10 @@ jobs:
           cd ios
           # Piped through cat so xcodebuild output line-flushes to our log
           # instead of buffering under Flutter's tool wrapper.
+          # Archive UNSIGNED — signing is deferred to the export step, which
+          # re-signs from the local keychain (match cert+profile) and never
+          # dials Apple's portal. The -allowProvisioningUpdates flag we used to
+          # pass is what made xcodebuild stall for 1-2h on CI waiting on Apple.
           xcodebuild \
             -workspace Runner.xcworkspace \
             -scheme Runner \
@@ -217,11 +221,7 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -archivePath "$PWD/../build/ios/archive/Runner.xcarchive" \
-            -allowProvisioningUpdates \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY='Apple Distribution' \
-            DEVELOPMENT_TEAM='${{ steps.config.outputs.team_id }}' \
-            PROVISIONING_PROFILE_SPECIFIER='match AppStore ${{ steps.config.outputs.bundle_id }}' \
+            CODE_SIGNING_ALLOWED=NO \
             COMPILER_INDEX_STORE_ENABLE=NO \
             archive 2>&1 | cat
 
@@ -254,7 +254,7 @@ jobs:
             -archivePath "$PWD/build/ios/archive/Runner.xcarchive" \
             -exportPath "$PWD/build/ios/ipa" \
             -exportOptionsPlist "$PWD/ios/ExportOptions.plist" \
-            -allowProvisioningUpdates 2>&1 | cat
+            2>&1 | cat
           ls -lh build/ios/ipa/
 
       # ── Upload the IPA that flutter build ipa produced ───────────────────
