@@ -206,7 +206,7 @@ jobs:
 
       # ── Build signed IPA with Flutter (fast, no xcodebuild Run Script hang) ─
       - name: Build IPA
-        timeout-minutes: 30
+        timeout-minutes: 60
         run: |
           cat > ios/ExportOptions.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
@@ -229,7 +229,11 @@ jobs:
           </dict>
           </plist>
           EOF
-          flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+          # --verbose so we see xcodebuild progress and can diagnose future hangs
+          # (was hanging silently after 'Running pod install' with no output).
+          flutter build ipa --release \
+            --export-options-plist=ios/ExportOptions.plist \
+            --verbose
 
       # ── Upload the IPA that flutter build ipa produced ───────────────────
       # We skip fastlane's build_app entirely because xcodebuild archive
